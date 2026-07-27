@@ -1,15 +1,13 @@
 package jolpica
 
 import (
-	"os"
 	"testing"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseDriverStandings_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/driverstandings_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/driverstandings_2024_9.json")
 
 	standings, err := ParseDriverStandings(data)
 	if err != nil {
@@ -36,10 +34,7 @@ func TestParseDriverStandings_RealCapture(t *testing.T) {
 }
 
 func TestParseConstructorStandings_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/constructorstandings_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/constructorstandings_2024_9.json")
 
 	standings, err := ParseConstructorStandings(data)
 	if err != nil {

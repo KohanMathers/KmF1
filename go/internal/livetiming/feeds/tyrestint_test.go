@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseTyreStints_RealCapture_StintAgeProgresses(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingappdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingappdata.jsonstream")
 
 	result, err := ParseTyreStints(data)
 	if err != nil {
@@ -55,10 +53,7 @@ func TestParseTyreStints_RealCapture_StintAgeProgresses(t *testing.T) {
 }
 
 func TestParseTyreStints_RealCapture_PitStopStartsNewStint(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingappdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingappdata.jsonstream")
 
 	result, err := ParseTyreStints(data)
 	if err != nil {

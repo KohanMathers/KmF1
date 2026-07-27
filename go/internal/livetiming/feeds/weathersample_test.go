@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseWeatherSamples_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/weatherdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/weatherdata.jsonstream")
 
 	samples, err := ParseWeatherSamples(data)
 	if err != nil {

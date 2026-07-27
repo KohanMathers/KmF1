@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseSessionClock_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/extrapolatedclock.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/extrapolatedclock.jsonstream")
 
 	clocks, err := ParseSessionClock(data)
 	if err != nil {

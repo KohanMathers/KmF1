@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseAudioStreams_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/audiostreams.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/audiostreams.jsonstream")
 
 	streams, err := ParseAudioStreams(data)
 	if err != nil {
@@ -37,10 +35,7 @@ func TestParseAudioStreams_RealCapture(t *testing.T) {
 }
 
 func TestParseContentStreams_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/contentstreams.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/contentstreams.jsonstream")
 
 	streams, err := ParseContentStreams(data)
 	if err != nil {

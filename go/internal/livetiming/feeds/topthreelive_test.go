@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseTopThreeLive_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/topthree.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/topthree.jsonstream")
 
 	result, err := ParseTopThreeLive(data)
 	if err != nil {

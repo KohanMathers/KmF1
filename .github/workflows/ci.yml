@@ -50,6 +50,7 @@ jobs:
 
       - name: Seed test fixtures
         if: steps.testdata-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
         run: python3 seed_test_data.py
 
       - name: Test

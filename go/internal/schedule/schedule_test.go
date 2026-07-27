@@ -2,20 +2,17 @@ package schedule
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func loadRealSeason(t *testing.T) *livetiming.Season {
 	t.Helper()
-	data, err := os.ReadFile("../livetiming/testdata/index2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "../livetiming/testdata/index2024.json")
 
 	var season livetiming.Season
 	if err := json.Unmarshal(wire.TrimBOM(data), &season); err != nil {

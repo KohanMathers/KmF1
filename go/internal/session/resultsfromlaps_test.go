@@ -1,21 +1,18 @@
 package session
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/feeds"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func durPtr(d time.Duration) *time.Duration { return &d }
 
 func TestQualifyingSplitTimes_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/qualifying_sessionstatus.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/qualifying_sessionstatus.jsonstream")
 	events, err := feeds.ParseSessionStatus(data)
 	if err != nil {
 		t.Fatalf("ParseSessionStatus: %v", err)

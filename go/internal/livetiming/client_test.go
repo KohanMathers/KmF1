@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync/atomic"
 	"testing"
 
 	"github.com/KohanMathers/KmF1/go/internal/cache"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 	"github.com/KohanMathers/KmF1/go/internal/transport"
 )
 
@@ -30,10 +30,7 @@ func newTestClient(t *testing.T, primaryURL, mirrorURL string) *Client {
 }
 
 func TestFetchSeason_RealIndexFixture(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/index2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/index2024.json")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/static/2024/Index.json" {

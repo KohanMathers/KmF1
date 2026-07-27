@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseDriverBestStats_RealCapture_InitialEmptySnapshotEmitsNothing(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingstats.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingstats.jsonstream")
 	result, err := ParseDriverBestStats(data)
 	if err != nil {
 		t.Fatalf("ParseDriverBestStats: %v", err)
@@ -27,10 +25,7 @@ func TestParseDriverBestStats_RealCapture_InitialEmptySnapshotEmitsNothing(t *te
 }
 
 func TestParseDriverBestStats_RealCapture_PersonalBestLapTime(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingstats.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingstats.jsonstream")
 	result, err := ParseDriverBestStats(data)
 	if err != nil {
 		t.Fatalf("ParseDriverBestStats: %v", err)
@@ -59,10 +54,7 @@ func TestParseDriverBestStats_RealCapture_PersonalBestLapTime(t *testing.T) {
 }
 
 func TestParseDriverBestStats_RealCapture_BestSpeedST(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingstats.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingstats.jsonstream")
 	result, err := ParseDriverBestStats(data)
 	if err != nil {
 		t.Fatalf("ParseDriverBestStats: %v", err)

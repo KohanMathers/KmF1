@@ -1,20 +1,15 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestDeriveLapStartTimes_RealCapture_BaseAssumption(t *testing.T) {
-	timingData, err := os.ReadFile("testdata/timingdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	statusData, err := os.ReadFile("testdata/sessionstatus.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	timingData := testfixture.Read(t, "testdata/timingdata.jsonstream")
+	statusData := testfixture.Read(t, "testdata/sessionstatus.jsonstream")
 
 	laps, err := ParseLapData(timingData)
 	if err != nil {

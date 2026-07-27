@@ -1,23 +1,17 @@
 package session
 
 import (
-	"os"
 	"testing"
 
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/feeds"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestReconcileResults_RealCapture_MergesIdentityWithClassification(t *testing.T) {
 
-	driverListData, err := os.ReadFile("../livetiming/feeds/testdata/driverlist.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	resultsData, err := os.ReadFile("../jolpica/testdata/results_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	driverListData := testfixture.Read(t, "../livetiming/feeds/testdata/driverlist.jsonstream")
+	resultsData := testfixture.Read(t, "../jolpica/testdata/results_2024_9.json")
 
 	driverInfo, err := feeds.ParseDriverList(driverListData)
 	if err != nil {

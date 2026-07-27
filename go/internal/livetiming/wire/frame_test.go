@@ -2,17 +2,15 @@ package wire
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func readTestdata(t *testing.T, name string) []byte {
 	t.Helper()
-	data, err := os.ReadFile("testdata/" + name)
-	if err != nil {
-		t.Fatalf("read testdata/%s: %v", name, err)
-	}
+	data := testfixture.Read(t, "testdata/"+name)
 	return data
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/multiviewer"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 	"github.com/KohanMathers/KmF1/go/internal/transport"
 )
 
@@ -44,8 +45,20 @@ var jolpicaFixtures = map[string]string{
 	"/2024/9/laps/1.json":   "internal/jolpica/testdata/laps1_2024_9.json",
 }
 
+func mapValues(maps ...map[string]string) []string {
+	var out []string
+	for _, m := range maps {
+		for _, v := range m {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 func newFixtureServer(t *testing.T) *httptest.Server {
 	t.Helper()
+	testfixture.RequireAll(t, mapValues(livetimingFixtures, jolpicaFixtures)...)
+
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/static/") {
 			feedFile := path.Base(r.URL.Path)

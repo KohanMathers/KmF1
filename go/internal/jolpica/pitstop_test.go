@@ -1,16 +1,14 @@
 package jolpica
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParsePitStops_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/pitstops_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/pitstops_2024_9.json")
 
 	stops, err := ParsePitStops(data)
 	if err != nil {

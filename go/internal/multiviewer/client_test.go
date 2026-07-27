@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/KohanMathers/KmF1/go/internal/cache"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 	"github.com/KohanMathers/KmF1/go/internal/transport"
 )
 
@@ -24,10 +24,7 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 }
 
 func TestFetchCircuitInfo_RealFixtureOverHTTP(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/catalunya_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/catalunya_2024.json")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/circuits/15/2024" {
@@ -63,10 +60,7 @@ func TestFetchCircuitInfo_404IsSurfacedAsError(t *testing.T) {
 }
 
 func TestFetchCircuitInfo_CachesSecondCall(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/catalunya_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/catalunya_2024.json")
 
 	var requestCount int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -1,25 +1,18 @@
 package feeds
 
 import (
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func readTelemetryFixtures(t *testing.T) (carData, posData []byte) {
 	t.Helper()
-	var err error
-	carData, err = os.ReadFile("testdata/cardata.jsonstream")
-	if err != nil {
-		t.Fatalf("read cardata fixture: %v", err)
-	}
-	posData, err = os.ReadFile("testdata/position.jsonstream")
-	if err != nil {
-		t.Fatalf("read position fixture: %v", err)
-	}
+	carData = testfixture.Read(t, "testdata/cardata.jsonstream")
+	posData = testfixture.Read(t, "testdata/position.jsonstream")
 	return carData, posData
 }
 

@@ -1,15 +1,13 @@
 package multiviewer
 
 import (
-	"os"
 	"testing"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseCircuitInfo_RealCapture_Catalunya(t *testing.T) {
-	data, err := os.ReadFile("testdata/catalunya_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/catalunya_2024.json")
 
 	info, err := ParseCircuitInfo(data)
 	if err != nil {
@@ -47,10 +45,7 @@ func TestParseCircuitInfo_RealCapture_Catalunya(t *testing.T) {
 }
 
 func TestParseCircuitInfo_RealCapture_HungaroringLetteredCorners(t *testing.T) {
-	data, err := os.ReadFile("testdata/hungaroring_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/hungaroring_2024.json")
 
 	info, err := ParseCircuitInfo(data)
 	if err != nil {

@@ -1,15 +1,13 @@
 package feeds
 
 import (
-	"os"
 	"testing"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseArchiveStatus_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/archivestatus.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/archivestatus.json")
 
 	status, err := ParseArchiveStatus(data)
 	if err != nil {

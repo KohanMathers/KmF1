@@ -1,16 +1,14 @@
 package jolpica
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseRaceResults_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/results_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/results_2024_9.json")
 
 	results, err := ParseRaceResults(data)
 	if err != nil {
@@ -81,10 +79,7 @@ func TestParseRaceResults_RealCapture(t *testing.T) {
 }
 
 func TestParseSprintResults_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/sprint_2024_6.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/sprint_2024_6.json")
 
 	results, err := ParseSprintResults(data)
 	if err != nil {
@@ -108,10 +103,7 @@ func TestParseSprintResults_RealCapture(t *testing.T) {
 }
 
 func TestParseQualifyingResults_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/qualifying_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/qualifying_2024_9.json")
 
 	results, err := ParseQualifyingResults(data)
 	if err != nil {

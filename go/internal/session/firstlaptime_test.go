@@ -1,28 +1,19 @@
 package session
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/feeds"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestBackfillFirstLapTime_RealCapture(t *testing.T) {
 
-	timingData, err := os.ReadFile("../livetiming/feeds/testdata/timingdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	resultsData, err := os.ReadFile("../jolpica/testdata/results_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	lapsData, err := os.ReadFile("../jolpica/testdata/laps1_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	timingData := testfixture.Read(t, "../livetiming/feeds/testdata/timingdata.jsonstream")
+	resultsData := testfixture.Read(t, "../jolpica/testdata/results_2024_9.json")
+	lapsData := testfixture.Read(t, "../jolpica/testdata/laps1_2024_9.json")
 
 	laps, err := feeds.ParseLapData(timingData)
 	if err != nil {

@@ -1,16 +1,14 @@
 package jolpica
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseSchedule_RealCapture_StandardWeekend(t *testing.T) {
-	data, err := os.ReadFile("testdata/schedule_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/schedule_2024.json")
 
 	schedules, err := ParseSchedule(data)
 	if err != nil {
@@ -60,10 +58,7 @@ func TestParseSchedule_RealCapture_StandardWeekend(t *testing.T) {
 }
 
 func TestParseSchedule_RealCapture_SprintWeekendOrdering(t *testing.T) {
-	data, err := os.ReadFile("testdata/schedule_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/schedule_2024.json")
 	schedules, err := ParseSchedule(data)
 	if err != nil {
 		t.Fatalf("ParseSchedule: %v", err)

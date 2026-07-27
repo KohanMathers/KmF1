@@ -1,20 +1,15 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestFixTyreStints_RealCapture_NoSpuriousChangesWithinSharedWindow(t *testing.T) {
-	appData, err := os.ReadFile("testdata/timingappdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	timingData, err := os.ReadFile("testdata/timingdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	appData := testfixture.Read(t, "testdata/timingappdata.jsonstream")
+	timingData := testfixture.Read(t, "testdata/timingdata.jsonstream")
 
 	stints, err := ParseTyreStints(appData)
 	if err != nil {

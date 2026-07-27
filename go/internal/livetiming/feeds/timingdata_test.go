@@ -1,19 +1,16 @@
 package feeds
 
 import (
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestSplitTimingDataByDriver_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingdata.jsonstream")
 
 	perDriver, err := SplitTimingDataByDriver(data)
 	if err != nil {
@@ -72,10 +69,7 @@ func TestSplitTimingDataByDriver_RealCapture(t *testing.T) {
 }
 
 func TestTimingDataDecoder_IncrementalFeedMatchesBatchParse(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingdata.jsonstream")
 	wantLaps, err := ParseLapData(data)
 	if err != nil {
 		t.Fatalf("ParseLapData: %v", err)

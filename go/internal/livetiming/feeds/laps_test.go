@@ -1,17 +1,15 @@
 package feeds
 
 import (
-	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseLapData_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingdata.jsonstream")
 
 	result, err := ParseLapData(data)
 	if err != nil {

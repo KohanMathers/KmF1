@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseSessionStatus_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/sessionstatus.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/sessionstatus.jsonstream")
 
 	events, err := ParseSessionStatus(data)
 	if err != nil {

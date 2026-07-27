@@ -1,16 +1,14 @@
 package jolpica
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseLapTimes_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/laps1_2024_9.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/laps1_2024_9.json")
 
 	timings, err := ParseLapTimes(data)
 	if err != nil {

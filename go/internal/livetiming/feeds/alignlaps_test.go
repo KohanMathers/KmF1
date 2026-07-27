@@ -1,9 +1,10 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestAlignLaps_CorrectsFollowerToMatchReportedGap(t *testing.T) {
@@ -132,10 +133,7 @@ func TestAlignLaps_SkipsPittingDriverForLeaderDetection(t *testing.T) {
 }
 
 func TestAlignLaps_RealCaptureSmokeTest(t *testing.T) {
-	data, err := os.ReadFile("testdata/timingdata.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/timingdata.jsonstream")
 
 	laps, err := ParseLapData(data)
 	if err != nil {

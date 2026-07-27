@@ -1,15 +1,13 @@
 package feeds
 
 import (
-	"os"
 	"testing"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseLapCount_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/lapcount.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/lapcount.jsonstream")
 
 	progress, err := ParseLapCount(data)
 	if err != nil {

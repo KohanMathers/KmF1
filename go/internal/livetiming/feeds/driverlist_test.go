@@ -2,18 +2,15 @@ package feeds
 
 import (
 	"encoding/json"
-	"os"
 	"reflect"
 	"testing"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseDriverList_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/driverlist.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/driverlist.jsonstream")
 
 	drivers, err := ParseDriverList(data)
 	if err != nil {
@@ -105,10 +102,7 @@ func TestParseDriverList_KeepsDeclarationJustUnderCutoff(t *testing.T) {
 }
 
 func TestDriverListDecoder_IncrementalFeedMatchesBatchParse(t *testing.T) {
-	data, err := os.ReadFile("testdata/driverlist.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/driverlist.jsonstream")
 	want, err := ParseDriverList(data)
 	if err != nil {
 		t.Fatalf("ParseDriverList: %v", err)

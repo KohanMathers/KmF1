@@ -1,16 +1,14 @@
 package jolpica
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseDriverReferences_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/drivers_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/drivers_2024.json")
 
 	drivers, err := ParseDriverReferences(data)
 	if err != nil {
@@ -48,10 +46,7 @@ func TestParseDriverReferences_RealCapture(t *testing.T) {
 }
 
 func TestParseConstructorReferences_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/constructors_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/constructors_2024.json")
 	constructors, err := ParseConstructorReferences(data)
 	if err != nil {
 		t.Fatalf("ParseConstructorReferences: %v", err)
@@ -74,10 +69,7 @@ func TestParseConstructorReferences_RealCapture(t *testing.T) {
 }
 
 func TestParseCircuitReferences_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/circuits_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/circuits_2024.json")
 	circuits, err := ParseCircuitReferences(data)
 	if err != nil {
 		t.Fatalf("ParseCircuitReferences: %v", err)
@@ -106,10 +98,7 @@ func TestParseCircuitReferences_RealCapture(t *testing.T) {
 }
 
 func TestParseFinishingStatusReferences_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/status_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/status_2024.json")
 	statuses, err := ParseFinishingStatusReferences(data)
 	if err != nil {
 		t.Fatalf("ParseFinishingStatusReferences: %v", err)

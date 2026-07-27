@@ -1,18 +1,15 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseTrackStatus_RealCapture(t *testing.T) {
-	data, err := os.ReadFile("testdata/trackstatus.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/trackstatus.jsonstream")
 
 	events, err := ParseTrackStatus(data)
 	if err != nil {
@@ -40,10 +37,7 @@ func TestParseTrackStatus_RejectsMalformed(t *testing.T) {
 }
 
 func TestTrackStatusDecoder_IncrementalFeedMatchesBatchParse(t *testing.T) {
-	data, err := os.ReadFile("testdata/trackstatus.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/trackstatus.jsonstream")
 	want, err := ParseTrackStatus(data)
 	if err != nil {
 		t.Fatalf("ParseTrackStatus: %v", err)

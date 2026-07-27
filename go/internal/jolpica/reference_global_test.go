@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/KohanMathers/KmF1/go/internal/cache"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 	"github.com/KohanMathers/KmF1/go/internal/transport"
 )
 
@@ -22,10 +22,7 @@ func newGlobalRefTestClient(t *testing.T, baseURL string) *Client {
 }
 
 func TestFetchDriverReference_RealCapture_NotSeasonScoped(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/driver_max_verstappen.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/driver_max_verstappen.json")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/drivers/max_verstappen.json" {
@@ -46,10 +43,7 @@ func TestFetchDriverReference_RealCapture_NotSeasonScoped(t *testing.T) {
 }
 
 func TestFetchConstructorReference_RealCapture(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/constructor_red_bull.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/constructor_red_bull.json")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/constructors/red_bull.json" {
 			t.Errorf("unexpected request path %q", r.URL.Path)
@@ -69,10 +63,7 @@ func TestFetchConstructorReference_RealCapture(t *testing.T) {
 }
 
 func TestFetchCircuitReference_RealCapture(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/circuit_monza.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/circuit_monza.json")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/circuits/monza.json" {
 			t.Errorf("unexpected request path %q", r.URL.Path)
@@ -104,10 +95,7 @@ func TestFetchDriverReference_NotFound(t *testing.T) {
 }
 
 func TestFetchAllFinishingStatusReferences_RealCapture(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/status_alltime.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/status_alltime.json")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/status.json" {
 			t.Errorf("unexpected request path %q, want /status.json (not year-scoped)", r.URL.Path)
@@ -130,10 +118,7 @@ func TestFetchAllFinishingStatusReferences_RealCapture(t *testing.T) {
 }
 
 func TestFetchAllDriverReferences_UsesUnscopedPath(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/drivers_2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "testdata/drivers_2024.json")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/drivers.json" {
 			t.Errorf("unexpected request path %q, want /drivers.json (not year-scoped)", r.URL.Path)

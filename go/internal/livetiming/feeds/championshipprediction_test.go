@@ -1,16 +1,14 @@
 package feeds
 
 import (
-	"os"
 	"testing"
 	"time"
+
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 func TestParseChampionshipPrediction_RealCapture_Drivers(t *testing.T) {
-	data, err := os.ReadFile("testdata/championshipprediction.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/championshipprediction.jsonstream")
 
 	drivers, _, err := ParseChampionshipPrediction(data)
 	if err != nil {
@@ -42,10 +40,7 @@ func TestParseChampionshipPrediction_RealCapture_Drivers(t *testing.T) {
 }
 
 func TestParseChampionshipPrediction_RealCapture_Teams(t *testing.T) {
-	data, err := os.ReadFile("testdata/championshipprediction.jsonstream")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	data := testfixture.Read(t, "testdata/championshipprediction.jsonstream")
 
 	_, teams, err := ParseChampionshipPrediction(data)
 	if err != nil {

@@ -2,23 +2,19 @@ package kmf1
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/live"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 )
 
 var realBase = time.Date(2024, 6, 23, 14, 0, 0, 0, time.UTC)
 
 func readFixture(t *testing.T, path string) []byte {
 	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read fixture %s: %v", path, err)
-	}
-	return data
+	return testfixture.Read(t, path)
 }
 
 func recordsToMessages(t *testing.T, topic string, data []byte) []live.Message {

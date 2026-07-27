@@ -15,6 +15,7 @@ import (
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/multiviewer"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 	"github.com/KohanMathers/KmF1/go/internal/transport"
 )
 
@@ -26,6 +27,7 @@ func TestSessionRefLoad_FeedFailure_LogsWarning(t *testing.T) {
 		}
 		fixturesMinusTrackStatus[feed] = fixture
 	}
+	testfixture.RequireAll(t, mapValues(fixturesMinusTrackStatus)...)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/static/") {

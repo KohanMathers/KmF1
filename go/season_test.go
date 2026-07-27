@@ -4,22 +4,19 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/KohanMathers/KmF1/go/internal/cache"
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/multiviewer"
+	"github.com/KohanMathers/KmF1/go/internal/testfixture"
 	"github.com/KohanMathers/KmF1/go/internal/transport"
 )
 
 func newIndexOnlyTestClient(t *testing.T) (*Client, *httptest.Server) {
 	t.Helper()
-	fixture, err := os.ReadFile("internal/livetiming/testdata/index2024.json")
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
+	fixture := testfixture.Read(t, "internal/livetiming/testdata/index2024.json")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/static/2024/Index.json" {
