@@ -19,6 +19,8 @@ func Open(path string) (*Cache, error) {
 		return nil, fmt.Errorf("cache: open %q: %w", path, err)
 	}
 
+	db.SetMaxOpenConns(1)
+
 	if _, err := db.Exec(schema); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("cache: create schema: %w", err)

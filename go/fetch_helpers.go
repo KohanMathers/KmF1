@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/feeds"
@@ -120,16 +121,30 @@ func fetchTyreStints(ctx context.Context, lt *livetiming.Client, path string, lo
 }
 
 func loadTelemetry(ctx context.Context, lt *livetiming.Client, path string, logger *slog.Logger) map[string][]feeds.Telemetry {
-	carRaw, err := lt.FetchFeed(ctx, path, "CarData.z.jsonStream")
-	if err != nil {
-		logFeedFetchFailure(ctx, logger, "CarData.z", path, err)
+	var carRaw, posRaw []byte
+	var carErr, posErr error
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		carRaw, carErr = lt.FetchFeed(ctx, path, "CarData.z.jsonStream")
+	}()
+	go func() {
+		defer wg.Done()
+		posRaw, posErr = lt.FetchFeed(ctx, path, "Position.z.jsonStream")
+	}()
+	wg.Wait()
+
+	if carErr != nil {
+		logFeedFetchFailure(ctx, logger, "CarData.z", path, carErr)
 		return nil
 	}
-	posRaw, err := lt.FetchFeed(ctx, path, "Position.z.jsonStream")
-	if err != nil {
-		logFeedFetchFailure(ctx, logger, "Position.z", path, err)
+	if posErr != nil {
+		logFeedFetchFailure(ctx, logger, "Position.z", path, posErr)
 		return nil
 	}
+
 	telemetry, err := feeds.ParseTelemetry(carRaw, posRaw)
 	if err != nil {
 		logFeedParseFailure(ctx, logger, "CarData.z+Position.z (telemetry)", path, err)

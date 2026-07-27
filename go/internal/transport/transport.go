@@ -16,7 +16,7 @@ import (
 
 const requestsPerHour = 500
 
-const burst = 10
+const burst = 25
 
 const defaultTimeout = 30 * time.Second
 
