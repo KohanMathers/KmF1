@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+
+      - name: Build
+        working-directory: go
+        run: go build ./...
+
+      - name: Vet
+        working-directory: go
+        run: go vet ./...
+
+      - name: Check formatting
+        working-directory: go
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not gofmt'ed:"
+            echo "$unformatted"
+            echo "Run 'gofmt -w .' inside go/ and commit the result."
+            exit 1
+          fi
+
+      - uses: actions/cache@v4
+        id: testdata-cache
+        with:
+          path: |
+            go/**/testdata/*.json
+            go/**/testdata/*.jsonstream
+          key: testdata-${{ hashFiles('seed_test_data.py') }}
+
+      - uses: actions/setup-python@v5
+        if: steps.testdata-cache.outputs.cache-hit != 'true'
+        with:
+          python-version: "3.x"
+
+      - name: Seed test fixtures
+        if: steps.testdata-cache.outputs.cache-hit != 'true'
+        run: python3 seed_test_data.py
+
+      - name: Test
+        working-directory: go
+        run: go test ./...

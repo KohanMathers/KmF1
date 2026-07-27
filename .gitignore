@@ -1,0 +1,28 @@
+# Real F1/Jolpica/MultiViewer fixture captures used by the Go test suite
+**/testdata/*.json
+**/testdata/*.jsonstream
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace / module cache leftovers
+/vendor/
+go.work
+go.work.sum
+
+# Coverage output
+*.cover
+coverage.txt
+coverage.html
+
+# Editor/OS cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp

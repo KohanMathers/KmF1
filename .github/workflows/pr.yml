@@ -1,0 +1,38 @@
+name: PR checks
+
+on:
+  pull_request:
+
+jobs:
+  mod-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+
+      - name: Verify go.mod / go.sum are tidy
+        working-directory: go
+        run: |
+          go mod tidy
+          if ! git diff --exit-code -- go.mod go.sum; then
+            echo "go.mod/go.sum are out of date."
+            echo "Run 'go mod tidy' inside go/ and commit the result."
+            exit 1
+          fi
+
+  doc-comments:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+
+      - name: Verify exported kmf1 API has doc comments
+        run: go run .github/scripts/docguard.go go
