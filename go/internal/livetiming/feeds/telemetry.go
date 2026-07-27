@@ -3,7 +3,9 @@ package feeds
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
@@ -44,29 +46,129 @@ type positionSample struct {
 }
 
 func ParseTelemetry(carData, positionData []byte) (map[string][]Telemetry, error) {
-	var d TelemetryDecoder
-
 	carRecords, err := wire.SplitFrames(carData)
 	if err != nil {
 		return nil, fmt.Errorf("feeds: CarData: %w", err)
 	}
-	for i, rec := range carRecords {
-		if err := d.FeedCarData(rec.Elapsed, rec.Payload); err != nil {
-			return nil, fmt.Errorf("feeds: CarData: record %d: %w", i, err)
-		}
+	cars, err := decodeCarRecords(carRecords)
+	if err != nil {
+		return nil, fmt.Errorf("feeds: CarData: %w", err)
 	}
 
 	posRecords, err := wire.SplitFrames(positionData)
 	if err != nil {
 		return nil, fmt.Errorf("feeds: Position: %w", err)
 	}
-	for i, rec := range posRecords {
-		if err := d.FeedPosition(rec.Elapsed, rec.Payload); err != nil {
-			return nil, fmt.Errorf("feeds: Position: record %d: %w", i, err)
+	positions, err := decodePositionRecords(posRecords)
+	if err != nil {
+		return nil, fmt.Errorf("feeds: Position: %w", err)
+	}
+
+	d := TelemetryDecoder{cars: cars, positions: positions}
+	return d.Snapshot(), nil
+}
+
+func chunkBounds(n, parts int) [][2]int {
+	if parts > n {
+		parts = n
+	}
+	if parts < 1 {
+		parts = 1
+	}
+	bounds := make([][2]int, 0, parts)
+	base, rem := n/parts, n%parts
+	start := 0
+	for i := 0; i < parts && start < n; i++ {
+		size := base
+		if i < rem {
+			size++
+		}
+		bounds = append(bounds, [2]int{start, start + size})
+		start += size
+	}
+	return bounds
+}
+
+func decodeCarRecords(records []wire.Record) (map[string][]carSample, error) {
+	bounds := chunkBounds(len(records), runtime.GOMAXPROCS(0))
+	chunks := make([]map[string][]carSample, len(bounds))
+	errs := make([]error, len(bounds))
+
+	var wg sync.WaitGroup
+	for i, b := range bounds {
+		wg.Add(1)
+		go func(i int, start, end int) {
+			defer wg.Done()
+			local := make(map[string][]carSample)
+			for j := start; j < end; j++ {
+				samples, err := decodeCarRecord(records[j].Elapsed, records[j].Payload)
+				if err != nil {
+					errs[i] = fmt.Errorf("record %d: %w", j, err)
+					return
+				}
+				for _, s := range samples {
+					local[s.driverNumber] = append(local[s.driverNumber], s)
+				}
+			}
+			chunks[i] = local
+		}(i, b[0], b[1])
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return d.Snapshot(), nil
+	out := make(map[string][]carSample)
+	for _, local := range chunks {
+		for drv, samples := range local {
+			out[drv] = append(out[drv], samples...)
+		}
+	}
+	return out, nil
+}
+
+func decodePositionRecords(records []wire.Record) (map[string][]positionSample, error) {
+	bounds := chunkBounds(len(records), runtime.GOMAXPROCS(0))
+	chunks := make([]map[string][]positionSample, len(bounds))
+	errs := make([]error, len(bounds))
+
+	var wg sync.WaitGroup
+	for i, b := range bounds {
+		wg.Add(1)
+		go func(i int, start, end int) {
+			defer wg.Done()
+			local := make(map[string][]positionSample)
+			for j := start; j < end; j++ {
+				samples, err := decodePositionRecord(records[j].Elapsed, records[j].Payload)
+				if err != nil {
+					errs[i] = fmt.Errorf("record %d: %w", j, err)
+					return
+				}
+				for _, s := range samples {
+					local[s.driverNumber] = append(local[s.driverNumber], s)
+				}
+			}
+			chunks[i] = local
+		}(i, b[0], b[1])
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	out := make(map[string][]positionSample)
+	for _, local := range chunks {
+		for drv, samples := range local {
+			out[drv] = append(out[drv], samples...)
+		}
+	}
+	return out, nil
 }
 
 type TelemetryDecoder struct {
@@ -75,9 +177,37 @@ type TelemetryDecoder struct {
 }
 
 func (d *TelemetryDecoder) FeedCarData(elapsed time.Duration, payload string) error {
-	decoded, err := wire.Decode(payload, true)
+	samples, err := decodeCarRecord(elapsed, payload)
 	if err != nil {
 		return err
+	}
+	if d.cars == nil {
+		d.cars = make(map[string][]carSample)
+	}
+	for _, s := range samples {
+		d.cars[s.driverNumber] = append(d.cars[s.driverNumber], s)
+	}
+	return nil
+}
+
+func (d *TelemetryDecoder) FeedPosition(elapsed time.Duration, payload string) error {
+	samples, err := decodePositionRecord(elapsed, payload)
+	if err != nil {
+		return err
+	}
+	if d.positions == nil {
+		d.positions = make(map[string][]positionSample)
+	}
+	for _, s := range samples {
+		d.positions[s.driverNumber] = append(d.positions[s.driverNumber], s)
+	}
+	return nil
+}
+
+func decodeCarRecord(elapsed time.Duration, payload string) ([]carSample, error) {
+	decoded, err := wire.Decode(payload, true)
+	if err != nil {
+		return nil, err
 	}
 
 	var raw struct {
@@ -89,12 +219,10 @@ func (d *TelemetryDecoder) FeedCarData(elapsed time.Duration, payload string) er
 		} `json:"Entries"`
 	}
 	if err := json.Unmarshal(decoded, &raw); err != nil {
-		return fmt.Errorf("unmarshal: %w", err)
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 
-	if d.cars == nil {
-		d.cars = make(map[string][]carSample)
-	}
+	var samples []carSample
 	for _, entry := range raw.Entries {
 		date, err := time.Parse(time.RFC3339Nano, entry.Utc)
 		if err != nil {
@@ -126,16 +254,16 @@ func (d *TelemetryDecoder) FeedCarData(elapsed time.Duration, payload string) er
 				n := int(v)
 				s.drsNo = &n
 			}
-			d.cars[drv] = append(d.cars[drv], s)
+			samples = append(samples, s)
 		}
 	}
-	return nil
+	return samples, nil
 }
 
-func (d *TelemetryDecoder) FeedPosition(elapsed time.Duration, payload string) error {
+func decodePositionRecord(elapsed time.Duration, payload string) ([]positionSample, error) {
 	decoded, err := wire.Decode(payload, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var raw struct {
@@ -150,12 +278,10 @@ func (d *TelemetryDecoder) FeedPosition(elapsed time.Duration, payload string) e
 		} `json:"Position"`
 	}
 	if err := json.Unmarshal(decoded, &raw); err != nil {
-		return fmt.Errorf("unmarshal: %w", err)
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 
-	if d.positions == nil {
-		d.positions = make(map[string][]positionSample)
-	}
+	var samples []positionSample
 	for _, entry := range raw.Position {
 		date, err := time.Parse(time.RFC3339Nano, entry.Timestamp)
 		if err != nil {
@@ -163,7 +289,7 @@ func (d *TelemetryDecoder) FeedPosition(elapsed time.Duration, payload string) e
 		}
 		for drv, pos := range entry.Entries {
 			x, y, z := int(pos.X), int(pos.Y), int(pos.Z)
-			d.positions[drv] = append(d.positions[drv], positionSample{
+			samples = append(samples, positionSample{
 				driverNumber: drv,
 				date:         date,
 				frameElapsed: elapsed,
@@ -173,7 +299,7 @@ func (d *TelemetryDecoder) FeedPosition(elapsed time.Duration, payload string) e
 			})
 		}
 	}
-	return nil
+	return samples, nil
 }
 
 func parseCarData(data []byte) (map[string][]carSample, error) {
@@ -216,9 +342,19 @@ func (d *TelemetryDecoder) Snapshot() map[string][]Telemetry {
 	}
 
 	result := make(map[string][]Telemetry, len(drivers))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 	for drv := range drivers {
-		result[drv] = mergeDriverTelemetry(drv, d.cars[drv], d.positions[drv], t0)
+		wg.Add(1)
+		go func(drv string) {
+			defer wg.Done()
+			merged := mergeDriverTelemetry(drv, d.cars[drv], d.positions[drv], t0)
+			mu.Lock()
+			result[drv] = merged
+			mu.Unlock()
+		}(drv)
 	}
+	wg.Wait()
 	return result
 }
 
