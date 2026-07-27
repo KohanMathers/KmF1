@@ -33,7 +33,7 @@ func newIndexOnlyTestClient(t *testing.T) (*Client, *httptest.Server) {
 	}
 	t.Cleanup(func() { _ = c.Close() })
 
-	tr := transport.NewWithRate(1_000_000, 1000)
+	tr := transport.NewWithRate(1_000_000)
 	client := &Client{
 		livetiming:  livetiming.NewClientWithBaseURL(tr, c, srv.URL),
 		jolpica:     jolpica.NewClientWithBaseURL(tr, c, srv.URL),

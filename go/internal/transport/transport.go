@@ -10,13 +10,9 @@ import (
 	"net/url"
 	"sync"
 	"time"
-
-	"golang.org/x/time/rate"
 )
 
 const requestsPerHour = 500
-
-const burst = 25
 
 const defaultTimeout = 30 * time.Second
 
@@ -28,22 +24,20 @@ type Client struct {
 	http *http.Client
 
 	requestsPerHour int
-	burst           int
 
 	mu       sync.Mutex
-	limiters map[string]*rate.Limiter
+	limiters map[string]*slidingWindowLimiter
 }
 
 func New() *Client {
-	return NewWithRate(requestsPerHour, burst)
+	return NewWithRate(requestsPerHour)
 }
 
-func NewWithRate(requestsPerHour, burst int) *Client {
+func NewWithRate(requestsPerHour int) *Client {
 	return &Client{
 		http:            &http.Client{Timeout: defaultTimeout},
 		requestsPerHour: requestsPerHour,
-		burst:           burst,
-		limiters:        make(map[string]*rate.Limiter),
+		limiters:        make(map[string]*slidingWindowLimiter),
 	}
 }
 
@@ -112,13 +106,13 @@ func isRetryable(err error) bool {
 	return false
 }
 
-func (c *Client) limiterFor(host string) *rate.Limiter {
+func (c *Client) limiterFor(host string) *slidingWindowLimiter {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	l, ok := c.limiters[host]
 	if !ok {
-		l = rate.NewLimiter(rate.Every(time.Hour/time.Duration(c.requestsPerHour)), c.burst)
+		l = newSlidingWindowLimiter(c.requestsPerHour, time.Hour)
 		c.limiters[host] = l
 	}
 	return l

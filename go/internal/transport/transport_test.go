@@ -83,40 +83,40 @@ func TestGetRejectsMalformedURL(t *testing.T) {
 	}
 }
 
-func TestRateLimitAllowsBurst(t *testing.T) {
-	c := New()
+func TestRateLimitAllowsUpToLimitInstantly(t *testing.T) {
+	c := NewWithRate(1000)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	for i := 0; i < burst; i++ {
+	for i := 0; i < 1000; i++ {
 		if err := c.limiterFor("example.com").Wait(ctx); err != nil {
-			t.Fatalf("request %d within burst should not be rate limited: %v", i, err)
+			t.Fatalf("request %d within the rolling-window limit should not be rate limited: %v", i, err)
 		}
 	}
 }
 
-func TestRateLimitBlocksBeyondBurst(t *testing.T) {
-	c := New()
+func TestRateLimitBlocksBeyondLimit(t *testing.T) {
+	c := NewWithRate(1000)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	for i := 0; i < burst; i++ {
+	for i := 0; i < 1000; i++ {
 		if err := c.limiterFor("example.com").Wait(ctx); err != nil {
-			t.Fatalf("request %d within burst should not be rate limited: %v", i, err)
+			t.Fatalf("request %d within the rolling-window limit should not be rate limited: %v", i, err)
 		}
 	}
 
 	if err := c.limiterFor("example.com").Wait(ctx); err == nil {
-		t.Fatal("expected request beyond burst to be rate limited")
+		t.Fatal("expected a request beyond the rolling-window limit to block until the context expired")
 	}
 }
 
 func TestRateLimitIsPerHost(t *testing.T) {
-	c := New()
+	c := NewWithRate(1000)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	for i := 0; i < burst; i++ {
+	for i := 0; i < 1000; i++ {
 		if err := c.limiterFor("a.example.com").Wait(ctx); err != nil {
 			t.Fatalf("host a request %d should not be rate limited: %v", i, err)
 		}
@@ -124,6 +124,22 @@ func TestRateLimitIsPerHost(t *testing.T) {
 
 	if err := c.limiterFor("b.example.com").Wait(ctx); err != nil {
 		t.Fatalf("host b should have its own independent limit: %v", err)
+	}
+}
+
+func TestRateLimitDoesNotThrottleUsageWellBelowTheCap(t *testing.T) {
+	c := NewWithRate(requestsPerHour)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	for i := 0; i < 150; i++ {
+		if err := c.limiterFor("example.com").Wait(ctx); err != nil {
+			t.Fatalf("request %d should not be rate limited at 150/%d usage: %v", i, requestsPerHour, err)
+		}
+	}
+	if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+		t.Errorf("150 requests against a %d/hr limit took %v, want near-instant", requestsPerHour, elapsed)
 	}
 }
 

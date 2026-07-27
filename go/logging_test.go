@@ -55,7 +55,7 @@ func TestSessionRefLoad_FeedFailure_LogsWarning(t *testing.T) {
 	}
 	defer func() { _ = c.Close() }()
 
-	tr := transport.NewWithRate(1_000_000, 1000)
+	tr := transport.NewWithRate(1_000_000)
 	var logs bytes.Buffer
 	client := &Client{
 		livetiming:  livetiming.NewClientWithBaseURL(tr, c, srv.URL),

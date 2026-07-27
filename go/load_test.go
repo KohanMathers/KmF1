@@ -100,7 +100,7 @@ func newFixtureTestClient(t *testing.T, baseURL string) *Client {
 	}
 	t.Cleanup(func() { _ = c.Close() })
 
-	tr := transport.NewWithRate(1_000_000, 1000)
+	tr := transport.NewWithRate(1_000_000)
 	return &Client{
 		livetiming:  livetiming.NewClientWithBaseURL(tr, c, baseURL),
 		jolpica:     jolpica.NewClientWithBaseURL(tr, c, baseURL),
