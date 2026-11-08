@@ -109,7 +109,8 @@ func (c *Client) fetch(ctx context.Context, path string) ([]byte, error) {
 
 	body, primaryErr := c.get(ctx, url, c.authToken)
 	if primaryErr != nil {
-		if IsAccessDenied(primaryErr) {
+		var se *StatusError
+		if errors.As(primaryErr, &se) && se.StatusCode == http.StatusUnauthorized {
 			if c.authToken == "" {
 				primaryErr = fmt.Errorf("%w (the archive requires an F1TV subscription token; set KMF1_F1TV_TOKEN)", primaryErr)
 			} else {

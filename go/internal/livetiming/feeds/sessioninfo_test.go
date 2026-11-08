@@ -28,11 +28,11 @@ func TestParseSessionInfo_RealCapture(t *testing.T) {
 		t.Errorf("Path = %q", info.Path)
 	}
 
-	wantStart := time.Date(2024, 6, 23, 15, 0, 0, 0, time.UTC)
+	wantStart := time.Date(2024, 6, 23, 13, 0, 0, 0, time.UTC)
 	if !info.StartDate.Equal(wantStart) {
 		t.Errorf("StartDate = %v, want %v", info.StartDate, wantStart)
 	}
-	wantEnd := time.Date(2024, 6, 23, 17, 0, 0, 0, time.UTC)
+	wantEnd := time.Date(2024, 6, 23, 15, 0, 0, 0, time.UTC)
 	if !info.EndDate.Equal(wantEnd) {
 		t.Errorf("EndDate = %v, want %v", info.EndDate, wantEnd)
 	}

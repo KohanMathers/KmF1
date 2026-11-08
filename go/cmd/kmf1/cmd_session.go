@@ -42,7 +42,7 @@ func cmdSession(ctx context.Context, client *kmf1.Client, jsonOut bool, args []s
 	}
 	fmt.Printf("%s — %s\n", info.Meeting.Name, info.Name)
 	fmt.Printf("  Location:   %s, %s\n", info.Meeting.Location, info.Meeting.Country.Name)
-	fmt.Printf("  Start:      %s\n", info.StartDate.Format("2006-01-02 15:04 MST"))
+	fmt.Printf("  Start:      %s\n", info.StartDate.UTC().Format("2006-01-02 15:04 MST"))
 	fmt.Printf("  Drivers:    %d\n", summary.DriverCount)
 	fmt.Printf("  Laps:       %d\n", summary.LapCount)
 	fmt.Printf("  Results:    %d\n", summary.ResultCount)

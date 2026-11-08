@@ -36,7 +36,7 @@ func (e *Event) Session(sessionType string) (*SessionRef, error) {
 		if s.SessionType != sessionType {
 			continue
 		}
-		if s.Path == "" {
+		if s.Path == "" && len(s.PathCandidates) == 0 {
 			return nil, fmt.Errorf("kmf1: no live-timing archive path available for %s %d %s (this event's schedule came from the Jolpica fallback, which has no session paths%s)", e.schedule.EventName, e.schedule.Season, sessionType, e.fallbackDetail())
 		}
 		return &SessionRef{
@@ -45,6 +45,7 @@ func (e *Event) Session(sessionType string) (*SessionRef, error) {
 			round:       e.schedule.RoundNumber,
 			sessionType: sessionType,
 			path:        s.Path,
+			candidates:  s.PathCandidates,
 		}, nil
 	}
 	return nil, fmt.Errorf("kmf1: no %q session found for %s %d", sessionType, e.schedule.EventName, e.schedule.Season)

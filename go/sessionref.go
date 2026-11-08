@@ -2,12 +2,14 @@ package kmf1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
+	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/feeds"
 	"github.com/KohanMathers/KmF1/go/internal/session"
 )
@@ -19,6 +21,7 @@ type SessionRef struct {
 	round       int
 	sessionType string
 	path        string
+	candidates  []string
 }
 
 // Load fetches and assembles every available live-timing and Jolpica feed for the referenced session into a Session. Individual feeds that fail to fetch or parse are logged and left empty rather than failing the whole call; only a failure to fetch the session's core SessionInfo feed aborts Load.
@@ -30,7 +33,7 @@ func (r *SessionRef) Load(ctx context.Context) (*Session, error) {
 
 	logger.InfoContext(ctx, "kmf1: loading session", "session", r.path, "year", r.year, "round", r.round, "sessionType", r.sessionType)
 
-	sessionInfoRaw, err := lt.FetchFeed(ctx, r.path, "SessionInfo.jsonStream")
+	sessionInfoRaw, err := r.fetchSessionInfo(ctx)
 	if err != nil {
 		logger.ErrorContext(ctx, "kmf1: load session: fetch SessionInfo failed, aborting Load", "session", r.path, "error", err)
 		return nil, fmt.Errorf("kmf1: load session: fetch SessionInfo: %w", err)
@@ -237,4 +240,25 @@ func latestTotalLaps(progress []feeds.SessionProgress) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+func (r *SessionRef) fetchSessionInfo(ctx context.Context) ([]byte, error) {
+	lt := r.client.livetiming
+	if r.path != "" {
+		return lt.FetchFeed(ctx, r.path, "SessionInfo.jsonStream")
+	}
+
+	var errs []error
+	for _, candidate := range r.candidates {
+		raw, err := lt.FetchFeed(ctx, candidate, "SessionInfo.jsonStream")
+		if err == nil {
+			r.path = candidate
+			return raw, nil
+		}
+		if livetiming.IsAccessDenied(err) || ctx.Err() != nil {
+			return nil, err
+		}
+		errs = append(errs, err)
+	}
+	return nil, fmt.Errorf("no derived archive path exists for this session (tried %d): %w", len(r.candidates), errors.Join(errs...))
 }

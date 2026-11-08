@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/KohanMathers/KmF1/go/internal/jolpica"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/livetiming/wire"
 	"github.com/KohanMathers/KmF1/go/internal/testfixture"
@@ -163,5 +164,70 @@ func TestScheduleFromLivetiming_TestingEventsGetRoundZero(t *testing.T) {
 	}
 	if got := schedules[1].RoundNumber; got != 2 {
 		t.Errorf("Saudi Arabian Grand Prix RoundNumber = %d, want 2", got)
+	}
+}
+
+func sched(name string, round int, format string, raceUtc string) jolpica.Schedule {
+	race, _ := time.Parse(time.RFC3339, raceUtc)
+	return jolpica.Schedule{Season: 2026, RoundNumber: round, EventName: name, EventFormat: format,
+		Sessions: []jolpica.ScheduleSession{{SessionType: "Race", StartDateUtc: race}}}
+}
+
+func TestMerge_TakesJolpicaRoundsAndAddsMissingMeetings(t *testing.T) {
+	lt := []jolpica.Schedule{
+		sched("Pre-Season Testing", 0, "testing", "2026-02-13T07:00:00Z"),
+		sched("Miami Grand Prix", 6, "sprint", "2026-05-03T20:00:00Z"),
+		sched("Monaco Grand Prix", 6, "conventional", "2026-06-07T13:00:00Z"),
+		sched("Bahrain Grand Prix", 16, "conventional", "2026-10-04T07:00:00Z"),
+	}
+	jp := []jolpica.Schedule{
+		sched("Australian Grand Prix", 1, "", "2026-03-08T04:00:00Z"),
+		sched("Miami Grand Prix", 4, "", "2026-05-03T20:00:00Z"),
+		sched("Monaco Grand Prix", 6, "", "2026-06-07T13:00:00Z"),
+		sched("Bahrain Grand Prix in Malaysia", 16, "", "2026-10-04T07:00:00Z"),
+	}
+
+	got := merge(lt, jp)
+
+	want := []struct {
+		name  string
+		round int
+	}{
+		{"Pre-Season Testing", 0},
+		{"Australian Grand Prix", 1},
+		{"Miami Grand Prix", 4},
+		{"Monaco Grand Prix", 6},
+		{"Bahrain Grand Prix", 16},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d events, want %d: %+v", len(got), len(want), got)
+	}
+	for i, w := range want {
+		if got[i].EventName != w.name || got[i].RoundNumber != w.round {
+			t.Errorf("event %d = %q round %d, want %q round %d", i, got[i].EventName, got[i].RoundNumber, w.name, w.round)
+		}
+	}
+
+	aus := got[1]
+	if len(aus.Sessions[0].PathCandidates) == 0 || aus.Sessions[0].PathCandidates[0] != "2026/2026-03-08_Australian_Grand_Prix/2026-03-08_Race/" {
+		t.Errorf("Australian GP race candidates = %v", aus.Sessions[0].PathCandidates)
+	}
+}
+
+func TestDerivePaths_TriesShiftedDates(t *testing.T) {
+	race, _ := time.Parse(time.RFC3339, "2023-11-19T06:00:00Z")
+	paths := derivePaths(2023, "Las Vegas Grand Prix", race, "Race", race)
+	const want = "2023/2023-11-18_Las_Vegas_Grand_Prix/2023-11-18_Race/"
+	found := false
+	for _, p := range paths {
+		if p == want {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("derivePaths did not include %q: %v", want, paths)
+	}
+	if paths[0] != "2023/2023-11-19_Las_Vegas_Grand_Prix/2023-11-19_Race/" {
+		t.Errorf("first candidate = %q, want the unshifted path", paths[0])
 	}
 }

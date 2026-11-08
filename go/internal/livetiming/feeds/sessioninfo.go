@@ -3,7 +3,6 @@ package feeds
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/livetiming"
@@ -85,17 +84,18 @@ func (d *SessionInfoDecoder) Feed(elapsed time.Duration, payload string) error {
 		return fmt.Errorf("unmarshal: %w", err)
 	}
 
-	startDate, err := time.Parse(dateLayout, raw.StartDate)
+	gmtOffset, err := wire.ParseGmtOffset(raw.GmtOffset)
+	if err != nil {
+		return fmt.Errorf("parse GmtOffset %q: %w", raw.GmtOffset, err)
+	}
+	loc := time.FixedZone("", int(gmtOffset.Seconds()))
+	startDate, err := time.ParseInLocation(dateLayout, raw.StartDate, loc)
 	if err != nil {
 		return fmt.Errorf("parse StartDate %q: %w", raw.StartDate, err)
 	}
-	endDate, err := time.Parse(dateLayout, raw.EndDate)
+	endDate, err := time.ParseInLocation(dateLayout, raw.EndDate, loc)
 	if err != nil {
 		return fmt.Errorf("parse EndDate %q: %w", raw.EndDate, err)
-	}
-	gmtOffset, err := parseGmtOffset(raw.GmtOffset)
-	if err != nil {
-		return fmt.Errorf("parse GmtOffset %q: %w", raw.GmtOffset, err)
 	}
 
 	d.info = &SessionInfo{
@@ -114,27 +114,4 @@ func (d *SessionInfoDecoder) Feed(elapsed time.Duration, payload string) error {
 
 func (d *SessionInfoDecoder) Snapshot() (*SessionInfo, bool) {
 	return d.info, d.info != nil
-}
-
-func parseGmtOffset(s string) (time.Duration, error) {
-	if len(s) != 8 || s[2] != ':' || s[5] != ':' {
-		return 0, fmt.Errorf("malformed GmtOffset %q", s)
-	}
-
-	h, err := strconv.Atoi(s[0:2])
-	if err != nil {
-		return 0, fmt.Errorf("hours in %q: %w", s, err)
-	}
-	m, err := strconv.Atoi(s[3:5])
-	if err != nil {
-		return 0, fmt.Errorf("minutes in %q: %w", s, err)
-	}
-	sec, err := strconv.Atoi(s[6:8])
-	if err != nil {
-		return 0, fmt.Errorf("seconds in %q: %w", s, err)
-	}
-
-	return time.Duration(h)*time.Hour +
-		time.Duration(m)*time.Minute +
-		time.Duration(sec)*time.Second, nil
 }

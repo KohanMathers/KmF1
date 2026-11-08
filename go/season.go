@@ -34,7 +34,7 @@ func (s *Season) Events(ctx context.Context) ([]Event, error) {
 	return events, nil
 }
 
-// Event finds a single event in the season by round number (int) or event name (string, case-insensitive). Testing events have round number 0.
+// Event finds a single event in the season by round number (int) or event name (string, case-insensitive). Testing events have round number 0 and are not found by number; use TestingEvent for them.
 func (s *Season) Event(ctx context.Context, identifier any) (*Event, error) {
 	events, err := s.Events(ctx)
 	if err != nil {
@@ -43,6 +43,9 @@ func (s *Season) Event(ctx context.Context, identifier any) (*Event, error) {
 
 	switch id := identifier.(type) {
 	case int:
+		if id == 0 {
+			return nil, fmt.Errorf("kmf1: round 0 is used by testing events in %d; use TestingEvent to select one", s.year)
+		}
 		for i := range events {
 			if events[i].schedule.RoundNumber == id {
 				return &events[i], nil
@@ -59,6 +62,26 @@ func (s *Season) Event(ctx context.Context, identifier any) (*Event, error) {
 	default:
 		return nil, fmt.Errorf("kmf1: Event identifier must be an int (round number) or string (event name), got %T", identifier)
 	}
+}
+
+// TestingEvent returns the season's nth testing event (1-based, in date order). Some seasons have several tests with the same name, which Event cannot tell apart.
+func (s *Season) TestingEvent(ctx context.Context, n int) (*Event, error) {
+	events, err := s.Events(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	count := 0
+	for i := range events {
+		if events[i].schedule.EventFormat != "testing" {
+			continue
+		}
+		count++
+		if count == n {
+			return &events[i], nil
+		}
+	}
+	return nil, fmt.Errorf("kmf1: no testing event %d in %d (found %d)", n, s.year, count)
 }
 
 // TeamStyle returns the styling (colors, name) for a single team in this season, matched by team name or ID. It reports false if the season has no known styling data or the team isn't found.

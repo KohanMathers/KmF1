@@ -27,7 +27,8 @@ type ScheduleSession struct {
 	StartDate    time.Time
 	StartDateUtc time.Time
 
-	Path string
+	Path           string
+	PathCandidates []string `json:",omitempty"`
 }
 
 type rawScheduleEnvelope struct {
