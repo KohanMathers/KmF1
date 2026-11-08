@@ -45,23 +45,33 @@ type positionSample struct {
 	x, y, z      *int
 }
 
+type flexibleString string
+
+func (s *flexibleString) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		*s = flexibleString(str)
+		return nil
+	}
+
+	var num json.Number
+	if err := json.Unmarshal(data, &num); err != nil {
+		return fmt.Errorf("flexibleString: %s is neither a string nor a number", data)
+	}
+	*s = flexibleString(num.String())
+	return nil
+}
+
 func ParseTelemetry(carData, positionData []byte) (map[string][]Telemetry, error) {
 	carRecords, err := wire.SplitFrames(carData)
 	if err != nil {
 		return nil, fmt.Errorf("feeds: CarData: %w", err)
 	}
-	cars, err := decodeCarRecords(carRecords)
-	if err != nil {
-		return nil, fmt.Errorf("feeds: CarData: %w", err)
-	}
+	cars := decodeCarRecords(carRecords)
 
-	posRecords, err := wire.SplitFrames(positionData)
-	if err != nil {
-		return nil, fmt.Errorf("feeds: Position: %w", err)
-	}
-	positions, err := decodePositionRecords(posRecords)
-	if err != nil {
-		return nil, fmt.Errorf("feeds: Position: %w", err)
+	var positions map[string][]positionSample
+	if posRecords, err := wire.SplitFrames(positionData); err == nil {
+		positions = decodePositionRecords(posRecords)
 	}
 
 	d := TelemetryDecoder{cars: cars, positions: positions}
@@ -89,10 +99,9 @@ func chunkBounds(n, parts int) [][2]int {
 	return bounds
 }
 
-func decodeCarRecords(records []wire.Record) (map[string][]carSample, error) {
+func decodeCarRecords(records []wire.Record) map[string][]carSample {
 	bounds := chunkBounds(len(records), runtime.GOMAXPROCS(0))
 	chunks := make([]map[string][]carSample, len(bounds))
-	errs := make([]error, len(bounds))
 
 	var wg sync.WaitGroup
 	for i, b := range bounds {
@@ -103,8 +112,7 @@ func decodeCarRecords(records []wire.Record) (map[string][]carSample, error) {
 			for j := start; j < end; j++ {
 				samples, err := decodeCarRecord(records[j].Elapsed, records[j].Payload)
 				if err != nil {
-					errs[i] = fmt.Errorf("record %d: %w", j, err)
-					return
+					continue
 				}
 				for _, s := range samples {
 					local[s.driverNumber] = append(local[s.driverNumber], s)
@@ -115,25 +123,18 @@ func decodeCarRecords(records []wire.Record) (map[string][]carSample, error) {
 	}
 	wg.Wait()
 
-	for _, err := range errs {
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	out := make(map[string][]carSample)
 	for _, local := range chunks {
 		for drv, samples := range local {
 			out[drv] = append(out[drv], samples...)
 		}
 	}
-	return out, nil
+	return out
 }
 
-func decodePositionRecords(records []wire.Record) (map[string][]positionSample, error) {
+func decodePositionRecords(records []wire.Record) map[string][]positionSample {
 	bounds := chunkBounds(len(records), runtime.GOMAXPROCS(0))
 	chunks := make([]map[string][]positionSample, len(bounds))
-	errs := make([]error, len(bounds))
 
 	var wg sync.WaitGroup
 	for i, b := range bounds {
@@ -144,8 +145,7 @@ func decodePositionRecords(records []wire.Record) (map[string][]positionSample, 
 			for j := start; j < end; j++ {
 				samples, err := decodePositionRecord(records[j].Elapsed, records[j].Payload)
 				if err != nil {
-					errs[i] = fmt.Errorf("record %d: %w", j, err)
-					return
+					continue
 				}
 				for _, s := range samples {
 					local[s.driverNumber] = append(local[s.driverNumber], s)
@@ -156,19 +156,13 @@ func decodePositionRecords(records []wire.Record) (map[string][]positionSample, 
 	}
 	wg.Wait()
 
-	for _, err := range errs {
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	out := make(map[string][]positionSample)
 	for _, local := range chunks {
 		for drv, samples := range local {
 			out[drv] = append(out[drv], samples...)
 		}
 	}
-	return out, nil
+	return out
 }
 
 type TelemetryDecoder struct {
@@ -270,10 +264,10 @@ func decodePositionRecord(elapsed time.Duration, payload string) ([]positionSamp
 		Position []struct {
 			Timestamp string `json:"Timestamp"`
 			Entries   map[string]struct {
-				Status string  `json:"Status"`
-				X      float64 `json:"X"`
-				Y      float64 `json:"Y"`
-				Z      float64 `json:"Z"`
+				Status flexibleString `json:"Status"`
+				X      float64        `json:"X"`
+				Y      float64        `json:"Y"`
+				Z      float64        `json:"Z"`
 			} `json:"Entries"`
 		} `json:"Position"`
 	}

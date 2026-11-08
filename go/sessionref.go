@@ -137,6 +137,11 @@ func (r *SessionRef) Load(ctx context.Context) (*Session, error) {
 
 	wg.Wait()
 
+	if err := ctx.Err(); err != nil {
+		logger.WarnContext(ctx, "kmf1: load session: context cancelled during fetch, discarding partial session", "session", r.path, "error", err)
+		return nil, err
+	}
+
 	s.drivers = driverInfo
 	s.trackStatus = trackStatuses
 	s.statusEvents = statusEvents

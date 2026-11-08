@@ -109,6 +109,46 @@ func newFixtureTestClient(t *testing.T, baseURL string) *Client {
 	}
 }
 
+func TestSessionRefLoad_CancelledContext_ReturnsErrorAndNoPartialSession(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		feedFile := path.Base(r.URL.Path)
+		if feedFile == "SessionInfo.jsonStream" {
+			data, err := os.ReadFile(livetimingFixtures[feedFile])
+			if err != nil {
+				t.Errorf("read fixture: %v", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, _ = w.Write(data)
+			cancel()
+			return
+		}
+
+		<-ctx.Done()
+		http.Error(w, ctx.Err().Error(), http.StatusRequestTimeout)
+	}))
+	defer srv.Close()
+
+	client := newFixtureTestClient(t, srv.URL)
+	ref := &SessionRef{
+		client:      client,
+		year:        2024,
+		round:       9,
+		sessionType: SessionRace,
+		path:        "2024/2024-06-23_Spanish_Grand_Prix/2024-06-23_Race/",
+	}
+
+	session, err := ref.Load(ctx)
+	if err == nil {
+		t.Fatal("Load: expected an error for a context cancelled mid-load, got nil")
+	}
+	if session != nil {
+		t.Fatalf("Load: expected a nil Session alongside the error, got %+v", session)
+	}
+}
+
 func TestSessionRefLoad_RealFixtures_EndToEnd(t *testing.T) {
 	srv := newFixtureServer(t)
 	defer srv.Close()

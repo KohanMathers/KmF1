@@ -186,6 +186,82 @@ func mustParseRFC3339(t *testing.T, s string) time.Time {
 	return tm
 }
 
+func TestDecodePositionRecord_AcceptsNumericStatus(t *testing.T) {
+	payload := `{"Position":[{"Timestamp":"2024-01-01T00:00:00.000Z","Entries":{"1":{"Status":1,"X":100,"Y":200,"Z":300}}}]}`
+
+	samples, err := decodePositionRecord(0, payload)
+	if err != nil {
+		t.Fatalf("decodePositionRecord: %v", err)
+	}
+	if len(samples) != 1 {
+		t.Fatalf("got %d samples, want 1", len(samples))
+	}
+	if *samples[0].x != 100 || *samples[0].y != 200 || *samples[0].z != 300 {
+		t.Errorf("sample = %+v, want X=100 Y=200 Z=300", samples[0])
+	}
+}
+
+func TestDecodePositionRecords_SkipsBadRecordInsteadOfFailingBatch(t *testing.T) {
+	good := `{"Position":[{"Timestamp":"2024-01-01T00:00:00.000Z","Entries":{"1":{"Status":"OnTrack","X":1,"Y":2,"Z":3}}}]}`
+	bad := `not json at all`
+
+	records := []wire.Record{
+		{Elapsed: 0, Payload: bad},
+		{Elapsed: time.Second, Payload: good},
+	}
+
+	positions := decodePositionRecords(records)
+	if len(positions["1"]) != 1 {
+		t.Fatalf("got %d samples for driver 1, want 1 (bad record should be skipped, not fail the batch)", len(positions["1"]))
+	}
+}
+
+func TestDecodeCarRecords_SkipsBadRecordInsteadOfFailingBatch(t *testing.T) {
+	good := `{"Entries":[{"Utc":"2024-01-01T00:00:00.000Z","Cars":{"1":{"Channels":{"0":12000}}}}]}`
+	bad := `not json at all`
+
+	records := []wire.Record{
+		{Elapsed: 0, Payload: bad},
+		{Elapsed: time.Second, Payload: good},
+	}
+
+	cars := decodeCarRecords(records)
+	if len(cars["1"]) != 1 {
+		t.Fatalf("got %d samples for driver 1, want 1 (bad record should be skipped, not fail the batch)", len(cars["1"]))
+	}
+}
+
+func TestParseTelemetry_MalformedPositionLeavesCarDataIntact(t *testing.T) {
+	carData, _ := readTelemetryFixtures(t)
+	malformedPosition := []byte("00:00:00.000not json\r\n")
+
+	result, err := ParseTelemetry(carData, malformedPosition)
+	if err != nil {
+		t.Fatalf("ParseTelemetry: %v, want no error even though Position is malformed", err)
+	}
+
+	drv4 := result["4"]
+	if len(drv4) == 0 {
+		t.Fatal("expected CarData-derived telemetry for driver 4 despite malformed Position feed")
+	}
+	for _, sample := range drv4 {
+		if sample.PositionX != nil || sample.PositionY != nil || sample.PositionZ != nil {
+			t.Fatalf("expected nil position fields when Position feed is malformed, got %+v", sample)
+		}
+	}
+
+	var sawCarData bool
+	for _, sample := range drv4 {
+		if sample.RPM != nil {
+			sawCarData = true
+			break
+		}
+	}
+	if !sawCarData {
+		t.Error("expected at least one sample with car data")
+	}
+}
+
 func TestParseCarData_RejectsMalformed(t *testing.T) {
 	if _, err := parseCarData([]byte("00:00:00.000not json\r\n")); err == nil {
 		t.Fatal("expected an error for a malformed payload")
