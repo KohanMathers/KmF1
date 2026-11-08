@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/KohanMathers/KmF1/go/internal/livetiming"
 	"github.com/KohanMathers/KmF1/go/internal/schedule"
 	"github.com/KohanMathers/KmF1/go/internal/styling"
 )
@@ -17,19 +18,23 @@ type Season struct {
 
 // Events fetches the full race calendar for the season, in schedule order.
 func (s *Season) Events(ctx context.Context) ([]Event, error) {
-	schedules, err := schedule.FetchSchedule(ctx, s.client.livetiming, s.client.jolpica, s.year)
+	schedules, fallbackReason, err := schedule.FetchSchedule(ctx, s.client.livetiming, s.client.jolpica, s.year)
 	if err != nil {
 		return nil, fmt.Errorf("kmf1: fetch events for %d: %w", s.year, err)
+	}
+	if fallbackReason != nil {
+		s.client.log().Warn("live-timing archive unavailable, using Jolpica schedule without session paths",
+			"year", s.year, "access_denied", livetiming.IsAccessDenied(fallbackReason), "error", fallbackReason)
 	}
 
 	events := make([]Event, len(schedules))
 	for i, sc := range schedules {
-		events[i] = Event{client: s.client, schedule: sc}
+		events[i] = Event{client: s.client, schedule: sc, fallbackReason: fallbackReason}
 	}
 	return events, nil
 }
 
-// Event finds a single event in the season by round number (int) or event name (string, case-insensitive).
+// Event finds a single event in the season by round number (int) or event name (string, case-insensitive). Testing events have round number 0.
 func (s *Season) Event(ctx context.Context, identifier any) (*Event, error) {
 	events, err := s.Events(ctx)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/KohanMathers/KmF1/go/internal/cache"
 	"github.com/KohanMathers/KmF1/go/internal/jolpica"
@@ -29,7 +30,14 @@ func WithLogger(logger *slog.Logger) Option {
 	return func(c *Client) { c.logger = logger }
 }
 
-// New creates a Client backed by a persistent cache at cachePath. The cache is created if it does not already exist.
+const F1TVTokenEnv = "KMF1_F1TV_TOKEN"
+
+// WithF1TVToken sets the F1TV subscription token (F1TV Access or higher) used to access the live-timing archive, overriding the KMF1_F1TV_TOKEN environment variable. Without a valid token, the archive returns 401 and schedules fall back to Jolpica.
+func WithF1TVToken(token string) Option {
+	return func(c *Client) { c.livetiming.SetAuthToken(token) }
+}
+
+// New creates a Client backed by a persistent cache at cachePath. The cache is created if it does not already exist. The F1TV token for the live-timing archive is read from KMF1_F1TV_TOKEN unless WithF1TVToken is given.
 func New(cachePath string, opts ...Option) (*Client, error) {
 	c, err := cache.Open(cachePath)
 	if err != nil {
@@ -43,6 +51,7 @@ func New(cachePath string, opts ...Option) (*Client, error) {
 		multiviewer: multiviewer.NewClient(t, c),
 		cache:       c,
 	}
+	client.livetiming.SetAuthToken(os.Getenv(F1TVTokenEnv))
 	for _, opt := range opts {
 		opt(client)
 	}

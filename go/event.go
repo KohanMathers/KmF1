@@ -8,8 +8,16 @@ import (
 
 // Event represents a single race weekend within a Season, obtained via Season.Events or Season.Event.
 type Event struct {
-	client   *Client
-	schedule jolpica.Schedule
+	client         *Client
+	schedule       jolpica.Schedule
+	fallbackReason error
+}
+
+func (e *Event) fallbackDetail() string {
+	if e.fallbackReason == nil {
+		return ""
+	}
+	return fmt.Sprintf("; live-timing archive error: %v", e.fallbackReason)
 }
 
 // Info returns the raw schedule data for the event, including its name, round number, and circuit.
@@ -29,7 +37,7 @@ func (e *Event) Session(sessionType string) (*SessionRef, error) {
 			continue
 		}
 		if s.Path == "" {
-			return nil, fmt.Errorf("kmf1: no live-timing archive path available for %s %d %s (this event's schedule came from the Jolpica fallback, which has no session paths)", e.schedule.EventName, e.schedule.Season, sessionType)
+			return nil, fmt.Errorf("kmf1: no live-timing archive path available for %s %d %s (this event's schedule came from the Jolpica fallback, which has no session paths%s)", e.schedule.EventName, e.schedule.Season, sessionType, e.fallbackDetail())
 		}
 		return &SessionRef{
 			client:      e.client,
@@ -45,7 +53,7 @@ func (e *Event) Session(sessionType string) (*SessionRef, error) {
 // Circuit returns a handle to the circuit geometry data for the event's track, as provided by MultiViewer.
 func (e *Event) Circuit() (*Circuit, error) {
 	if e.schedule.CircuitKey == 0 {
-		return nil, fmt.Errorf("kmf1: no circuit key available for %s %d (this event's schedule came from the Jolpica fallback, which has no circuit key)", e.schedule.EventName, e.schedule.Season)
+		return nil, fmt.Errorf("kmf1: no circuit key available for %s %d (this event's schedule came from the Jolpica fallback, which has no circuit key%s)", e.schedule.EventName, e.schedule.Season, e.fallbackDetail())
 	}
 	return &Circuit{client: e.client, circuitKey: e.schedule.CircuitKey, year: e.schedule.Season}, nil
 }

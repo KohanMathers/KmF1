@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/KohanMathers/KmF1/go/internal/cache"
 	"github.com/KohanMathers/KmF1/go/internal/testfixture"
@@ -187,5 +189,101 @@ func TestGet_SendsUserAgent(t *testing.T) {
 
 	if gotUA != userAgent {
 		t.Errorf("User-Agent = %q, want %q", gotUA, userAgent)
+	}
+}
+
+func TestFetch_ReportsAccessDeniedFromPrimary(t *testing.T) {
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer primary.Close()
+
+	mirror := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer mirror.Close()
+
+	c := newTestClient(t, primary.URL, mirror.URL)
+
+	_, err := c.FetchSeason(context.Background(), 2023)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !IsAccessDenied(err) {
+		t.Errorf("IsAccessDenied = false for %v", err)
+	}
+	for _, want := range []string{"status 401", "status 404"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q", err, want)
+		}
+	}
+}
+
+func TestFetch_ServesExpiredCacheWhenUpstreamFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL, srv.URL)
+	const path = "/static/2022/x/2022-03-27_Race/SessionInfo.jsonStream"
+	if err := c.cache.Set(srv.URL+path, parserVersion, []byte("cached"), time.Now().Add(-time.Hour)); err != nil {
+		t.Fatalf("cache.Set: %v", err)
+	}
+
+	body, err := c.FetchFeed(context.Background(), "2022/x/2022-03-27_Race/", "SessionInfo.jsonStream")
+	if err != nil {
+		t.Fatalf("FetchFeed: %v", err)
+	}
+	if string(body) != "cached" {
+		t.Errorf("got body %q, want the stale cached body", body)
+	}
+}
+
+func TestExpiryFor(t *testing.T) {
+	now := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
+	cases := []struct {
+		path      string
+		permanent bool
+	}{
+		{"/static/2022/Index.json", true},
+		{"/static/2026/Index.json", false},
+		{"/static/2024/2024-03-02_Bahrain_Grand_Prix/2024-03-02_Race/SessionInfo.jsonStream", true},
+		{"/static/2026/2026-11-08_Brazilian_Grand_Prix/2026-11-08_Race/SessionInfo.jsonStream", false},
+		{"/static/StreamingStatus.json", false},
+	}
+	for _, tc := range cases {
+		got := expiryFor(tc.path, now).IsZero()
+		if got != tc.permanent {
+			t.Errorf("expiryFor(%q) permanent = %v, want %v", tc.path, got, tc.permanent)
+		}
+	}
+}
+
+func TestFetch_SendsAuthTokenToPrimaryOnly(t *testing.T) {
+	var primaryAuth, mirrorAuth string
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		primaryAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer primary.Close()
+
+	mirror := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mirrorAuth = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer mirror.Close()
+
+	c := newTestClient(t, primary.URL, mirror.URL)
+	c.SetAuthToken("secret")
+
+	if _, err := c.FetchFeed(context.Background(), "2024/example/", "SessionInfo.jsonStream"); err != nil {
+		t.Fatalf("FetchFeed: %v", err)
+	}
+	if primaryAuth != "Bearer secret" {
+		t.Errorf("primary Authorization = %q, want %q", primaryAuth, "Bearer secret")
+	}
+	if mirrorAuth != "" {
+		t.Errorf("mirror received Authorization %q, want none", mirrorAuth)
 	}
 }

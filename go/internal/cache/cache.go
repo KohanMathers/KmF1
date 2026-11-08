@@ -57,6 +57,22 @@ func (c *Cache) Get(url string, parserVersion int) ([]byte, bool, error) {
 	return body, true, nil
 }
 
+// GetStale returns a cached body regardless of its expiry. It is meant as a last resort when the upstream source is unreachable.
+func (c *Cache) GetStale(url string, parserVersion int) ([]byte, bool, error) {
+	var body []byte
+	err := c.db.QueryRow(
+		`SELECT body FROM responses WHERE url = ? AND parser_version = ?`,
+		url, parserVersion,
+	).Scan(&body)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return nil, false, nil
+	case err != nil:
+		return nil, false, fmt.Errorf("cache: get stale: %w", err)
+	}
+	return body, true, nil
+}
+
 func (c *Cache) Set(url string, parserVersion int, body []byte, expiresAt time.Time) error {
 	var expires sql.NullInt64
 	if !expiresAt.IsZero() {

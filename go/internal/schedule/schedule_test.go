@@ -119,6 +119,7 @@ func TestDeriveEventFormat(t *testing.T) {
 		{"conventional", "Spanish Grand Prix", []livetiming.Session{{Name: "Practice 1"}, {Name: "Qualifying"}, {Name: "Race"}}, "conventional"},
 		{"sprint", "Austrian Grand Prix", []livetiming.Session{{Name: "Practice 1"}, {Name: "Sprint Qualifying"}, {Name: "Sprint"}, {Name: "Qualifying"}, {Name: "Race"}}, "sprint"},
 		{"testing", "Pre-Season Testing", []livetiming.Session{{Name: "Day 1"}}, "testing"},
+		{"test", "Pre-Season Test", []livetiming.Session{{Name: "Day 1"}}, "testing"},
 	}
 	for _, c := range cases {
 		if got := deriveEventFormat(c.event, c.sessions); got != c.want {
@@ -147,5 +148,20 @@ func TestParseSessionTimes_RejectsMalformed(t *testing.T) {
 	}
 	if _, _, err := parseSessionTimes("2024-06-23T15:00:00", "bad"); err == nil {
 		t.Fatal("expected an error for a malformed GmtOffset")
+	}
+}
+
+func TestScheduleFromLivetiming_TestingEventsGetRoundZero(t *testing.T) {
+	season := &livetiming.Season{Year: 2022, Meetings: []livetiming.Meeting{
+		{Number: 2, Name: "Pre-Season Test"},
+		{Number: 2, Name: "Saudi Arabian Grand Prix"},
+	}}
+	schedules := scheduleFromLivetiming(season)
+
+	if got := schedules[0].RoundNumber; got != 0 {
+		t.Errorf("Pre-Season Test RoundNumber = %d, want 0", got)
+	}
+	if got := schedules[1].RoundNumber; got != 2 {
+		t.Errorf("Saudi Arabian Grand Prix RoundNumber = %d, want 2", got)
 	}
 }
