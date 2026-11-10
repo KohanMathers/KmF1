@@ -19,6 +19,8 @@ func PadTelemetry(telemetry map[string][]Telemetry) {
 		}
 	}
 
+	hasCar, hasPos := telemetryHalves(telemetry)
+
 	refTimestamps := make([]time.Duration, len(telemetry[refDrv]))
 	for i, t := range telemetry[refDrv] {
 		refTimestamps[i] = t.Timestamp
@@ -39,7 +41,7 @@ func PadTelemetry(telemetry map[string][]Telemetry) {
 		copy(out, ts)
 		for _, refTs := range refTimestamps {
 			if !existing[refTs] {
-				out = append(out, zeroTelemetrySample(drv, refTs))
+				out = append(out, paddingSample(drv, refTs, hasCar, hasPos))
 				padded = true
 			}
 		}
@@ -51,22 +53,35 @@ func PadTelemetry(telemetry map[string][]Telemetry) {
 	}
 }
 
-func zeroTelemetrySample(driverNumber string, ts time.Duration) Telemetry {
-	rpm, speed, gear, throttle, drsNo := 0, 0, 0, 0, 0
-	braking := false
-	x, y, z := 0, 0, 0
-	return Telemetry{
-		DriverNumber: driverNumber,
-		RPM:          &rpm,
-		Speed:        &speed,
-		Gear:         &gear,
-		Throttle:     &throttle,
-		Braking:      &braking,
-		DRS:          mapDRS(0),
-		DRSNo:        &drsNo,
-		PositionX:    &x,
-		PositionY:    &y,
-		PositionZ:    &z,
-		Timestamp:    ts,
+func telemetryHalves(telemetry map[string][]Telemetry) (hasCar, hasPos bool) {
+	for _, ts := range telemetry {
+		for _, t := range ts {
+			if t.RPM != nil || t.Speed != nil || t.Gear != nil || t.Throttle != nil || t.Braking != nil || t.DRSNo != nil {
+				hasCar = true
+			}
+			if t.PositionX != nil || t.PositionY != nil || t.PositionZ != nil {
+				hasPos = true
+			}
+			if hasCar && hasPos {
+				return
+			}
+		}
 	}
+	return
+}
+
+func paddingSample(driverNumber string, ts time.Duration, hasCar, hasPos bool) Telemetry {
+	t := Telemetry{DriverNumber: driverNumber, Timestamp: ts}
+	if hasCar {
+		rpm, speed, gear, throttle, drsNo := 0, 0, 0, 0, 0
+		braking := false
+		drs := mapDRS(0)
+		t.RPM, t.Speed, t.Gear, t.Throttle = &rpm, &speed, &gear, &throttle
+		t.Braking, t.DRS, t.DRSNo = &braking, &drs, &drsNo
+	}
+	if hasPos {
+		x, y, z := 0, 0, 0
+		t.PositionX, t.PositionY, t.PositionZ = &x, &y, &z
+	}
+	return t
 }

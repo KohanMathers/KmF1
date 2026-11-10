@@ -1,6 +1,7 @@
 package feeds
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -132,7 +133,7 @@ func TestParseTelemetry_RealCapture_MergesAndForwardFills(t *testing.T) {
 		}
 	}
 
-	if drv4[0].RPM != nil || drv4[0].Speed != nil || drv4[0].DRS != "" {
+	if drv4[0].RPM != nil || drv4[0].Speed != nil || drv4[0].DRS != nil {
 		t.Errorf("first sample should have nil car fields (no car data yet), got %+v", drv4[0])
 	}
 	if drv4[0].PositionX == nil || *drv4[0].PositionX != -3995 {
@@ -152,8 +153,8 @@ func TestParseTelemetry_RealCapture_MergesAndForwardFills(t *testing.T) {
 	if *firstWithCar.RPM != 12065 || *firstWithCar.Speed != 192 {
 		t.Errorf("first car sample = %+v, want RPM 12065 / Speed 192", firstWithCar)
 	}
-	if firstWithCar.DRS != "DISABLED" {
-		t.Errorf("DRS = %q, want %q", firstWithCar.DRS, "DISABLED")
+	if firstWithCar.DRS == nil || *firstWithCar.DRS != "DISABLED" {
+		t.Errorf("DRS = %v, want %q", firstWithCar.DRS, "DISABLED")
 	}
 	if firstWithCar.PositionX == nil {
 		t.Error("first car sample should have forward-filled position data, got nil")
@@ -231,34 +232,98 @@ func TestDecodeCarRecords_SkipsBadRecordInsteadOfFailingBatch(t *testing.T) {
 	}
 }
 
-func TestParseTelemetry_MalformedPositionLeavesCarDataIntact(t *testing.T) {
-	carData, _ := readTelemetryFixtures(t)
-	malformedPosition := []byte("00:00:00.000not json\r\n")
-
-	result, err := ParseTelemetry(carData, malformedPosition)
-	if err != nil {
-		t.Fatalf("ParseTelemetry: %v, want no error even though Position is malformed", err)
-	}
-
+func assertCarOnly(t *testing.T, result map[string][]Telemetry) {
+	t.Helper()
 	drv4 := result["4"]
 	if len(drv4) == 0 {
-		t.Fatal("expected CarData-derived telemetry for driver 4 despite malformed Position feed")
+		t.Fatal("expected CarData-derived telemetry for driver 4")
 	}
-	for _, sample := range drv4 {
-		if sample.PositionX != nil || sample.PositionY != nil || sample.PositionZ != nil {
-			t.Fatalf("expected nil position fields when Position feed is malformed, got %+v", sample)
-		}
-	}
-
 	var sawCarData bool
 	for _, sample := range drv4 {
+		if sample.PositionX != nil || sample.PositionY != nil || sample.PositionZ != nil {
+			t.Fatalf("expected nil position fields without Position, got %+v", sample)
+		}
 		if sample.RPM != nil {
 			sawCarData = true
-			break
 		}
 	}
 	if !sawCarData {
 		t.Error("expected at least one sample with car data")
+	}
+}
+
+func assertPositionOnly(t *testing.T, result map[string][]Telemetry) {
+	t.Helper()
+	drv4 := result["4"]
+	if len(drv4) == 0 {
+		t.Fatal("expected Position-derived telemetry for driver 4")
+	}
+	for _, sample := range drv4 {
+		if sample.RPM != nil || sample.Speed != nil || sample.Gear != nil || sample.Throttle != nil ||
+			sample.Braking != nil || sample.DRS != nil || sample.DRSNo != nil {
+			t.Fatalf("expected nil car fields without CarData, got %+v", sample)
+		}
+		if sample.PositionX == nil {
+			t.Fatalf("expected position fields to be filled, got %+v", sample)
+		}
+	}
+}
+
+func TestParseTelemetry_MalformedPositionLeavesCarDataIntact(t *testing.T) {
+	carData, _ := readTelemetryFixtures(t)
+
+	result, err := ParseTelemetry(carData, []byte("00:00:00.000not json\r\n"))
+	var perr *TelemetryParseError
+	if !errors.As(err, &perr) || perr.Position == nil || perr.CarData != nil {
+		t.Fatalf("err = %v, want a TelemetryParseError naming only Position", err)
+	}
+	assertCarOnly(t, result)
+}
+
+func TestParseTelemetry_MissingPositionLeavesCarDataIntact(t *testing.T) {
+	carData, _ := readTelemetryFixtures(t)
+
+	result, err := ParseTelemetry(carData, nil)
+	if err != nil {
+		t.Fatalf("ParseTelemetry: %v, want no error for an absent feed", err)
+	}
+	assertCarOnly(t, result)
+}
+
+func TestParseTelemetry_MalformedCarDataLeavesPositionIntact(t *testing.T) {
+	_, posData := readTelemetryFixtures(t)
+
+	result, err := ParseTelemetry([]byte("bad\r\n"), posData)
+	var perr *TelemetryParseError
+	if !errors.As(err, &perr) || perr.CarData == nil || perr.Position != nil {
+		t.Fatalf("err = %v, want a TelemetryParseError naming only CarData", err)
+	}
+	assertPositionOnly(t, result)
+}
+
+func TestParseTelemetry_MissingCarDataLeavesPositionIntact(t *testing.T) {
+	_, posData := readTelemetryFixtures(t)
+
+	result, err := ParseTelemetry(nil, posData)
+	if err != nil {
+		t.Fatalf("ParseTelemetry: %v, want no error for an absent feed", err)
+	}
+	assertPositionOnly(t, result)
+}
+
+func TestParseTelemetry_BothFeedsMissingIsEmpty(t *testing.T) {
+	result, err := ParseTelemetry(nil, nil)
+	if err != nil || result != nil {
+		t.Fatalf("got (%v, %v), want (nil, nil)", result, err)
+	}
+
+	result, err = ParseTelemetry([]byte("bad\r\n"), []byte("bad\r\n"))
+	var perr *TelemetryParseError
+	if !errors.As(err, &perr) || perr.CarData == nil || perr.Position == nil {
+		t.Fatalf("err = %v, want a TelemetryParseError naming both feeds", err)
+	}
+	if result != nil {
+		t.Fatalf("result = %v, want nil when both feeds fail", result)
 	}
 }
 

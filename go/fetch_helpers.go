@@ -2,6 +2,7 @@ package kmf1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -138,19 +139,43 @@ func loadTelemetry(ctx context.Context, lt *livetiming.Client, path string, logg
 
 	if carErr != nil {
 		logFeedFetchFailure(ctx, logger, "CarData.z", path, carErr)
-		return nil
+		carRaw = nil
 	}
 	if posErr != nil {
 		logFeedFetchFailure(ctx, logger, "Position.z", path, posErr)
+		posRaw = nil
+	}
+	if carRaw == nil && posRaw == nil {
+		logger.WarnContext(ctx, "kmf1: telemetry unavailable, both CarData.z and Position.z are missing", "session", path)
 		return nil
 	}
 
 	telemetry, err := feeds.ParseTelemetry(carRaw, posRaw)
-	if err != nil {
+	var perr *feeds.TelemetryParseError
+	if errors.As(err, &perr) {
+		if perr.CarData != nil {
+			logFeedParseFailure(ctx, logger, "CarData.z", path, perr.CarData)
+			carRaw = nil
+		}
+		if perr.Position != nil {
+			logFeedParseFailure(ctx, logger, "Position.z", path, perr.Position)
+			posRaw = nil
+		}
+	} else if err != nil {
 		logFeedParseFailure(ctx, logger, "CarData.z+Position.z (telemetry)", path, err)
 		return nil
 	}
-	logFeedLoaded(ctx, logger, "CarData.z+Position.z (telemetry)", path)
+
+	switch {
+	case carRaw != nil && posRaw != nil:
+		logFeedLoaded(ctx, logger, "CarData.z+Position.z (telemetry)", path)
+	case carRaw != nil:
+		logger.WarnContext(ctx, "kmf1: telemetry loaded without Position.z, position fields are null", "session", path)
+	case posRaw != nil:
+		logger.WarnContext(ctx, "kmf1: telemetry loaded without CarData.z, car fields are null", "session", path)
+	default:
+		logger.WarnContext(ctx, "kmf1: telemetry unavailable, both CarData.z and Position.z are missing", "session", path)
+	}
 	return telemetry
 }
 

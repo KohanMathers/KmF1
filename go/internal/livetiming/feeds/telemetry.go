@@ -18,7 +18,7 @@ type Telemetry struct {
 	Gear         *int
 	Throttle     *int
 	Braking      *bool
-	DRS          string
+	DRS          *string
 	DRSNo        *int
 	PositionX    *int
 	PositionY    *int
@@ -62,20 +62,64 @@ func (s *flexibleString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type TelemetryParseError struct {
+	CarData  error
+	Position error
+}
+
+func (e *TelemetryParseError) Error() string {
+	switch {
+	case e.CarData != nil && e.Position != nil:
+		return fmt.Sprintf("%v; %v", e.CarData, e.Position)
+	case e.CarData != nil:
+		return e.CarData.Error()
+	default:
+		return e.Position.Error()
+	}
+}
+
+func (e *TelemetryParseError) Unwrap() []error {
+	var errs []error
+	if e.CarData != nil {
+		errs = append(errs, e.CarData)
+	}
+	if e.Position != nil {
+		errs = append(errs, e.Position)
+	}
+	return errs
+}
+
 func ParseTelemetry(carData, positionData []byte) (map[string][]Telemetry, error) {
-	carRecords, err := wire.SplitFrames(carData)
-	if err != nil {
-		return nil, fmt.Errorf("feeds: CarData: %w", err)
-	}
-	cars := decodeCarRecords(carRecords)
+	var d TelemetryDecoder
+	var perr TelemetryParseError
 
-	var positions map[string][]positionSample
-	if posRecords, err := wire.SplitFrames(positionData); err == nil {
-		positions = decodePositionRecords(posRecords)
+	if carData != nil {
+		if records, err := wire.SplitFrames(carData); err != nil {
+			perr.CarData = fmt.Errorf("feeds: CarData: %w", err)
+		} else if cars := decodeCarRecords(records); len(cars) == 0 {
+			perr.CarData = fmt.Errorf("feeds: CarData: no samples decoded from %d records", len(records))
+		} else {
+			d.cars = cars
+		}
+	}
+	if positionData != nil {
+		if records, err := wire.SplitFrames(positionData); err != nil {
+			perr.Position = fmt.Errorf("feeds: Position: %w", err)
+		} else if positions := decodePositionRecords(records); len(positions) == 0 {
+			perr.Position = fmt.Errorf("feeds: Position: no samples decoded from %d records", len(records))
+		} else {
+			d.positions = positions
+		}
 	}
 
-	d := TelemetryDecoder{cars: cars, positions: positions}
-	return d.Snapshot(), nil
+	var err error
+	if perr.CarData != nil || perr.Position != nil {
+		err = &perr
+	}
+	if d.cars == nil && d.positions == nil {
+		return nil, err
+	}
+	return d.Snapshot(), err
 }
 
 func chunkBounds(n, parts int) [][2]int {
@@ -414,7 +458,8 @@ func mergeDriverTelemetry(drv string, cars []carSample, positions []positionSamp
 			t.Braking = lastCar.braking
 			t.DRSNo = lastCar.drsNo
 			if lastCar.drsNo != nil {
-				t.DRS = mapDRS(*lastCar.drsNo)
+				drs := mapDRS(*lastCar.drsNo)
+				t.DRS = &drs
 			}
 		}
 		if lastPos != nil {

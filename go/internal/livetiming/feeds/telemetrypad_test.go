@@ -36,7 +36,7 @@ func TestPadTelemetry_RealCapture_AllDriversReachReferenceLength(t *testing.T) {
 func TestPadTelemetry_PadsShorterDriverToReferenceTimestamps(t *testing.T) {
 	telemetry := map[string][]Telemetry{
 		"1": {
-			{DriverNumber: "1", Timestamp: 0, RPM: intPtr(10000)},
+			{DriverNumber: "1", Timestamp: 0, RPM: intPtr(10000), PositionX: intPtr(1)},
 			{DriverNumber: "1", Timestamp: 10, RPM: intPtr(10500)},
 			{DriverNumber: "1", Timestamp: 20, RPM: intPtr(11000)},
 		},
@@ -68,8 +68,8 @@ func TestPadTelemetry_PadsShorterDriverToReferenceTimestamps(t *testing.T) {
 	if *padded.Braking {
 		t.Error("padded sample Braking = true, want false")
 	}
-	if padded.DRS != "DISABLED" {
-		t.Errorf("padded sample DRS = %q, want DISABLED (mapped from raw 0)", padded.DRS)
+	if padded.DRS == nil || *padded.DRS != "DISABLED" {
+		t.Errorf("padded sample DRS = %v, want DISABLED (mapped from raw 0)", padded.DRS)
 	}
 	if *padded.PositionX != 0 || *padded.PositionY != 0 || *padded.PositionZ != 0 {
 		t.Errorf("padded sample position = %+v, want all zero", padded)
@@ -94,5 +94,38 @@ func TestPadTelemetry_SingleDriverIsNoop(t *testing.T) {
 	PadTelemetry(telemetry)
 	if len(telemetry["1"]) != 1 {
 		t.Errorf("single-driver map should be untouched, got length %d", len(telemetry["1"]))
+	}
+}
+
+func TestPadTelemetry_CarOnlySessionLeavesPositionNull(t *testing.T) {
+	telemetry := map[string][]Telemetry{
+		"1": {{DriverNumber: "1", Timestamp: 0, RPM: intPtr(10000)}, {DriverNumber: "1", Timestamp: 10, RPM: intPtr(11000)}},
+		"2": {{DriverNumber: "2", Timestamp: 0, RPM: intPtr(9000)}},
+	}
+	PadTelemetry(telemetry)
+
+	padded := telemetry["2"][1]
+	if padded.RPM == nil || *padded.RPM != 0 {
+		t.Errorf("padded RPM = %v, want 0", padded.RPM)
+	}
+	if padded.PositionX != nil || padded.PositionY != nil || padded.PositionZ != nil {
+		t.Errorf("padded sample in a session without Position.z has position %+v, want nil", padded)
+	}
+}
+
+func TestPadTelemetry_PositionOnlySessionLeavesCarNull(t *testing.T) {
+	telemetry := map[string][]Telemetry{
+		"1": {{DriverNumber: "1", Timestamp: 0, PositionX: intPtr(1)}, {DriverNumber: "1", Timestamp: 10, PositionX: intPtr(2)}},
+		"2": {{DriverNumber: "2", Timestamp: 0, PositionX: intPtr(3)}},
+	}
+	PadTelemetry(telemetry)
+
+	padded := telemetry["2"][1]
+	if padded.PositionX == nil || *padded.PositionX != 0 {
+		t.Errorf("padded PositionX = %v, want 0", padded.PositionX)
+	}
+	if padded.RPM != nil || padded.Speed != nil || padded.Gear != nil || padded.Throttle != nil ||
+		padded.Braking != nil || padded.DRS != nil || padded.DRSNo != nil {
+		t.Errorf("padded sample in a session without CarData.z has car fields %+v, want nil", padded)
 	}
 }
