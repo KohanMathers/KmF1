@@ -90,9 +90,9 @@ func parseTimeOfDay(s string) (time.Duration, error) {
 }
 
 func (c *Client) FetchPitStops(ctx context.Context, year, round int) ([]PitStop, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/%d/pitstops.json?limit=100", year, round))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/%d/pitstops.json", year, round), ParsePitStops)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch pit stops %d/%d: %w", year, round, err)
 	}
-	return ParsePitStops(body)
+	return rows, nil
 }

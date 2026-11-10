@@ -269,25 +269,25 @@ func parseErgastDuration(s string) (time.Duration, error) {
 }
 
 func (c *Client) FetchRaceResults(ctx context.Context, year, round int) ([]SessionResults, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/%d/results.json", year, round))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/%d/results.json", year, round), ParseRaceResults)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch race results %d/%d: %w", year, round, err)
 	}
-	return ParseRaceResults(body)
+	return rows, nil
 }
 
 func (c *Client) FetchSprintResults(ctx context.Context, year, round int) ([]SessionResults, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/%d/sprint.json", year, round))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/%d/sprint.json", year, round), ParseSprintResults)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch sprint results %d/%d: %w", year, round, err)
 	}
-	return ParseSprintResults(body)
+	return rows, nil
 }
 
 func (c *Client) FetchQualifyingResults(ctx context.Context, year, round int) ([]SessionResults, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/%d/qualifying.json", year, round))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/%d/qualifying.json", year, round), ParseQualifyingResults)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch qualifying results %d/%d: %w", year, round, err)
 	}
-	return ParseQualifyingResults(body)
+	return rows, nil
 }

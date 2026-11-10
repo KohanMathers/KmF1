@@ -100,6 +100,10 @@ func TestFetchAllFinishingStatusReferences_RealCapture(t *testing.T) {
 		if r.URL.Path != "/status.json" {
 			t.Errorf("unexpected request path %q, want /status.json (not year-scoped)", r.URL.Path)
 		}
+		if r.URL.Query().Get("offset") != "0" {
+			_, _ = w.Write(syntheticStatusPage(100, 36, 136))
+			return
+		}
 		_, _ = w.Write(fixture)
 	}))
 	defer srv.Close()
@@ -111,6 +115,9 @@ func TestFetchAllFinishingStatusReferences_RealCapture(t *testing.T) {
 	}
 	if len(statuses) == 0 {
 		t.Fatal("expected at least one status")
+	}
+	if len(statuses) != 136 {
+		t.Errorf("got %d statuses, want 136 (all pages)", len(statuses))
 	}
 	if statuses[0].Status != "Finished" || statuses[0].Count != 8117 {
 		t.Errorf("first status = %+v, want Finished/8117", statuses[0])

@@ -68,9 +68,9 @@ func parseErgastDuration1(s string) time.Duration {
 }
 
 func (c *Client) FetchLapTimes(ctx context.Context, year, round, lapNumber int) ([]LapTiming, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/%d/laps/%d.json?limit=100", year, round, lapNumber))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/%d/laps/%d.json", year, round, lapNumber), ParseLapTimes)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch lap times %d/%d lap %d: %w", year, round, lapNumber, err)
 	}
-	return ParseLapTimes(body)
+	return rows, nil
 }

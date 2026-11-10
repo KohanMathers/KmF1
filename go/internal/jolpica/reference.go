@@ -180,51 +180,51 @@ func ParseFinishingStatusReferences(data []byte) ([]FinishingStatusReference, er
 }
 
 func (c *Client) FetchDriverReferences(ctx context.Context, year int) ([]DriverReference, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/drivers.json?limit=1000", year))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/drivers.json", year), ParseDriverReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch drivers %d: %w", year, err)
 	}
-	return ParseDriverReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchConstructorReferences(ctx context.Context, year int) ([]ConstructorReference, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/constructors.json?limit=1000", year))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/constructors.json", year), ParseConstructorReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch constructors %d: %w", year, err)
 	}
-	return ParseConstructorReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchCircuitReferences(ctx context.Context, year int) ([]CircuitReference, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/circuits.json?limit=1000", year))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/circuits.json", year), ParseCircuitReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch circuits %d: %w", year, err)
 	}
-	return ParseCircuitReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchFinishingStatusReferences(ctx context.Context, year int) ([]FinishingStatusReference, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/status.json?limit=1000", year))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/status.json", year), ParseFinishingStatusReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch status %d: %w", year, err)
 	}
-	return ParseFinishingStatusReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchAllFinishingStatusReferences(ctx context.Context) ([]FinishingStatusReference, error) {
-	body, err := c.fetch(ctx, "/status.json?limit=1000")
+	rows, err := fetchList(ctx, c, "/status.json", ParseFinishingStatusReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch all statuses: %w", err)
 	}
-	return ParseFinishingStatusReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchAllDriverReferences(ctx context.Context) ([]DriverReference, error) {
-	body, err := c.fetch(ctx, "/drivers.json?limit=1000")
+	rows, err := fetchList(ctx, c, "/drivers.json", ParseDriverReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch all drivers: %w", err)
 	}
-	return ParseDriverReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchDriverReference(ctx context.Context, driverId string) (DriverReference, error) {
@@ -243,11 +243,11 @@ func (c *Client) FetchDriverReference(ctx context.Context, driverId string) (Dri
 }
 
 func (c *Client) FetchAllConstructorReferences(ctx context.Context) ([]ConstructorReference, error) {
-	body, err := c.fetch(ctx, "/constructors.json?limit=1000")
+	rows, err := fetchList(ctx, c, "/constructors.json", ParseConstructorReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch all constructors: %w", err)
 	}
-	return ParseConstructorReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchConstructorReference(ctx context.Context, constructorId string) (ConstructorReference, error) {
@@ -266,11 +266,11 @@ func (c *Client) FetchConstructorReference(ctx context.Context, constructorId st
 }
 
 func (c *Client) FetchAllCircuitReferences(ctx context.Context) ([]CircuitReference, error) {
-	body, err := c.fetch(ctx, "/circuits.json?limit=1000")
+	rows, err := fetchList(ctx, c, "/circuits.json", ParseCircuitReferences)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch all circuits: %w", err)
 	}
-	return ParseCircuitReferences(body)
+	return rows, nil
 }
 
 func (c *Client) FetchCircuitReference(ctx context.Context, circuitId string) (CircuitReference, error) {

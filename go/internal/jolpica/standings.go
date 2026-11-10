@@ -145,17 +145,17 @@ func ParseConstructorStandings(data []byte) ([]ConstructorStanding, error) {
 }
 
 func (c *Client) FetchDriverStandings(ctx context.Context, year, round int) ([]DriverStanding, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/%d/driverStandings.json", year, round))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/%d/driverStandings.json", year, round), ParseDriverStandings)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch driver standings %d/%d: %w", year, round, err)
 	}
-	return ParseDriverStandings(body)
+	return rows, nil
 }
 
 func (c *Client) FetchConstructorStandings(ctx context.Context, year, round int) ([]ConstructorStanding, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d/%d/constructorStandings.json", year, round))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d/%d/constructorStandings.json", year, round), ParseConstructorStandings)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch constructor standings %d/%d: %w", year, round, err)
 	}
-	return ParseConstructorStandings(body)
+	return rows, nil
 }

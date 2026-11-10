@@ -124,9 +124,9 @@ func parseScheduleDateTime(date, t string) (time.Time, error) {
 }
 
 func (c *Client) FetchSchedule(ctx context.Context, year int) ([]Schedule, error) {
-	body, err := c.fetch(ctx, fmt.Sprintf("/%d.json", year))
+	rows, err := fetchList(ctx, c, fmt.Sprintf("/%d.json", year), ParseSchedule)
 	if err != nil {
 		return nil, fmt.Errorf("jolpica: fetch schedule %d: %w", year, err)
 	}
-	return ParseSchedule(body)
+	return rows, nil
 }
