@@ -27,18 +27,25 @@ func SplitFrames(data []byte) ([]Record, error) {
 		if line == "" {
 			continue
 		}
+		payloadStart := strings.IndexAny(line, "{[\"")
+		if payloadStart < 0 {
+			payloadStart = len(line)
+		}
+		if payloadStart == 0 {
+			return nil, fmt.Errorf("wire: line %d has no elapsed-time prefix", i)
+		}
 		if len(line) < framePrefixLen {
 			return nil, fmt.Errorf("wire: line %d shorter than a frame prefix: %q", i, line)
 		}
 
-		elapsed, err := parseElapsed(line[:framePrefixLen])
+		elapsed, err := parseElapsed(line[:payloadStart])
 		if err != nil {
 			return nil, fmt.Errorf("wire: line %d: %w", i, err)
 		}
 
 		records = append(records, Record{
 			Elapsed: elapsed,
-			Payload: line[framePrefixLen:],
+			Payload: line[payloadStart:],
 		})
 	}
 
@@ -46,31 +53,41 @@ func SplitFrames(data []byte) ([]Record, error) {
 }
 
 func parseElapsed(prefix string) (time.Duration, error) {
-	if len(prefix) != framePrefixLen || prefix[2] != ':' || prefix[5] != ':' || prefix[8] != '.' {
+	if prefix == "" {
 		return 0, fmt.Errorf("malformed elapsed-time prefix %q", prefix)
 	}
-
-	h, err := strconv.Atoi(prefix[0:2])
-	if err != nil {
-		return 0, fmt.Errorf("hours in %q: %w", prefix, err)
+	var days time.Duration
+	clock := prefix
+	if dot := strings.IndexByte(prefix, '.'); dot >= 0 {
+		dayPart, rest := prefix[:dot], prefix[dot+1:]
+		if !strings.Contains(dayPart, ":") {
+			d, err := strconv.Atoi(dayPart)
+			if err != nil || len(rest) < 8 || rest[2] != ':' || rest[5] != '.' {
+				return 0, fmt.Errorf("malformed elapsed-time prefix %q", prefix)
+			}
+			days = time.Duration(d) * 24 * time.Hour
+			clock = rest
+		}
 	}
-	m, err := strconv.Atoi(prefix[3:5])
-	if err != nil {
-		return 0, fmt.Errorf("minutes in %q: %w", prefix, err)
+	parts := strings.SplitN(clock, ".", 2)
+	if len(parts) != 2 || len(parts[1]) < 1 || len(parts[1]) > 9 {
+		return 0, fmt.Errorf("malformed elapsed-time prefix %q", prefix)
 	}
-	s, err := strconv.Atoi(prefix[6:8])
-	if err != nil {
-		return 0, fmt.Errorf("seconds in %q: %w", prefix, err)
+	hms := strings.Split(parts[0], ":")
+	if len(hms) != 3 {
+		return 0, fmt.Errorf("malformed elapsed-time prefix %q", prefix)
 	}
-	ms, err := strconv.Atoi(prefix[9:12])
-	if err != nil {
-		return 0, fmt.Errorf("milliseconds in %q: %w", prefix, err)
+	h, e1 := strconv.Atoi(hms[0])
+	m, e2 := strconv.Atoi(hms[1])
+	s, e3 := strconv.Atoi(hms[2])
+	frac, e4 := strconv.Atoi(parts[1])
+	if e1 != nil || e2 != nil || e3 != nil || e4 != nil || len(hms[1]) != 2 || len(hms[2]) != 2 {
+		return 0, fmt.Errorf("malformed elapsed-time prefix %q", prefix)
 	}
-
-	return time.Duration(h)*time.Hour +
-		time.Duration(m)*time.Minute +
-		time.Duration(s)*time.Second +
-		time.Duration(ms)*time.Millisecond, nil
+	for i := len(parts[1]); i < 9; i++ {
+		frac *= 10
+	}
+	return days + time.Duration(h)*time.Hour + time.Duration(m)*time.Minute + time.Duration(s)*time.Second + time.Duration(frac), nil
 }
 
 func TrimBOM(data []byte) []byte {
