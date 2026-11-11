@@ -62,7 +62,7 @@ func parseElapsed(prefix string) (time.Duration, error) {
 		dayPart, rest := prefix[:dot], prefix[dot+1:]
 		if !strings.Contains(dayPart, ":") {
 			d, err := strconv.Atoi(dayPart)
-			if err != nil || len(rest) < 8 || rest[2] != ':' || rest[5] != '.' {
+		if err != nil || len(rest) < 9 || rest[2] != ':' || rest[8] != '.' {
 				return 0, fmt.Errorf("malformed elapsed-time prefix %q", prefix)
 			}
 			days = time.Duration(d) * 24 * time.Hour
